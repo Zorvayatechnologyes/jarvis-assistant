@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#03070d" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="JARVIS" />
+<meta name="format-detection" content="telephone=no" />
+<title>J.A.R.V.I.S. — Personal AI Assistant</title>
+<style>
+:root{
+  --accent:#3ad7ff;
+  --accent2:#ffc861;
+  --accent-dim:#0d6f8c;
+  --accent-rgb:58,215,255;
+  --bg:#03070d;
+  --panel:rgba(8,24,36,.60);
+  --line:rgba(var(--accent-rgb),.20);
+  --text:#d3ecf7;
+  --muted:#5f8a9e;
+  --ok:#49e39b;
+  --warn:#ffc861;
+  --danger:#ff6b6b;
+  --mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --r:14px;
+}
+body[data-theme="mark3"]{ --accent:#ff5a3c; --accent2:#ffc861; --accent-dim:#8c2d17; --accent-rgb:255,90,60; }
+body[data-theme="mark42"]{ --accent:#ffc861; --accent2:#ff8a3c; --accent-dim:#8c6418; --accent-rgb:255,200,97; }
+body[data-theme="stealth"]{ --accent:#b48cff; --accent2:#6be3ff; --accent-dim:#4a2f8c; --accent-rgb:180,140,255; }
+body[data-theme="war"]{ --accent:#cfd8dc; --accent2:#8fb6c9; --accent-dim:#4b5a62; --accent-rgb:207,216,220; }
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+html,body{height:100%;margin:0}
+body{
+  background:
+    radial-gradient(1200px 720px at 50% 38%, rgba(var(--accent-rgb),.16), transparent 72%),
+    radial-gradient(900px 520px at 8% 92%, rgba(18,38,78,.30), transparent 70%),
+    var(--bg);
+  color:var(--text);font-family:var(--mono);font-size:14px;
+  overflow:hidden;overflow-x:hidden;overscroll-behavior:none;touch-action:manipulation;
+  letter-spacing:.02em;
+  transition:background .5s;
+}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+input,select{font-family:inherit}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(var(--accent-rgb),.22);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+
+#veil{position:fixed;inset:0;pointer-events:none;z-index:60;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.14) 0 1px, transparent 1px 3px);
+  mix-blend-mode:multiply;opacity:.4}
+#veil::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 50%, transparent 58%, rgba(0,0,0,.6) 100%)}
+
+/* ---------------- boot ---------------- */
+#boot{position:fixed;inset:0;z-index:100;background:#03070d;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  padding:24px calc(24px + env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom));
+  transition:opacity .6s ease}
+#boot.gone{opacity:0;pointer-events:none}
+#bootlog{width:min(560px,92vw);height:180px;overflow:hidden;font-size:12px;line-height:1.95;
+  color:var(--accent);text-shadow:0 0 12px rgba(var(--accent-rgb),.5)}
+#bootlog div{opacity:0;animation:fadein .3s forwards}
+@keyframes fadein{to{opacity:1}}
+#boot h1{margin:0;font-size:clamp(24px,7vw,50px);letter-spacing:.36em;font-weight:400;
+  color:#eaf8ff;text-indent:.36em;text-shadow:0 0 26px rgba(var(--accent-rgb),.75),0 0 70px rgba(var(--accent-rgb),.3)}
+#boot .sub{color:var(--muted);font-size:10px;letter-spacing:.28em;text-indent:.28em;text-align:center}
+
+/* ---------------- shell ---------------- */
+#app{display:grid;height:100vh;height:100dvh;overflow:hidden;
+  grid-template-columns:300px minmax(0,1fr) 400px;
+  grid-template-rows:56px minmax(0,1fr) auto;
+  gap:10px;padding:10px;
+  opacity:0;transition:opacity .7s ease .1s}
+#app.on{opacity:1}
+#app>*{min-width:0}
+.panel{min-width:0}
+header,footer{min-width:0}
+
+header{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:0 14px;
+  border:1px solid var(--line);border-radius:var(--r);
+  background:linear-gradient(90deg, rgba(10,32,48,.85), rgba(6,16,26,.55));
+  backdrop-filter:blur(10px)}
+.brand{display:flex;align-items:center;gap:9px;font-size:12.5px;letter-spacing:.3em;color:#e9f8ff;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok);animation:breathe 2.4s infinite;flex:0 0 auto}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.3}}
+header .spacer{flex:1}
+.hchip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;
+  border:1px solid var(--line);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.hchip b{color:var(--accent);font-weight:500}
+.iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(var(--accent-rgb),.06);display:grid;place-items:center;font-size:15px;
+  transition:.18s;flex:0 0 auto}
+.iconbtn:hover{background:rgba(var(--accent-rgb),.16);border-color:rgba(var(--accent-rgb),.5)}
+.iconbtn.active{background:rgba(var(--accent-rgb),.22);border-color:var(--accent);color:#eaf9ff}
+.iconbtn.always{background:rgba(255,200,97,.22);border-color:var(--accent2);color:#ffe9bd;
+  animation:modepulse 1.9s ease-out infinite}
+@keyframes modepulse{0%{box-shadow:0 0 0 0 rgba(255,200,97,.55)}70%{box-shadow:0 0 0 7px rgba(255,200,97,0)}100%{box-shadow:0 0 0 0 rgba(255,200,97,0)}}
+body.always #statusdot{background:var(--accent2);box-shadow:0 0 12px var(--accent2)}
+body.always #caption .hl{color:var(--accent2)}
+.reactor.ambient .halo{animation:pulse 4.2s ease-in-out infinite}
+
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);
+  backdrop-filter:blur(10px);padding:14px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.panel h2{margin:0 0 12px;font-size:10px;font-weight:500;letter-spacing:.26em;color:var(--muted);
+  text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panel h2 span{color:var(--accent);letter-spacing:.1em}
+
+/* ---------------- diagnostics ---------------- */
+#diagbody{flex:1;overflow-y:auto;min-height:0;padding-right:2px}
+.gauge{margin-bottom:14px}
+.gauge .lab{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:5px;letter-spacing:.12em}
+.gauge .lab b{color:var(--text);font-weight:500}
+.bar{height:5px;border-radius:4px;background:rgba(var(--accent-rgb),.10);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:4px;
+  background:linear-gradient(90deg,var(--accent-dim),var(--accent));
+  box-shadow:0 0 12px rgba(var(--accent-rgb),.6);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.bar.gold i{background:linear-gradient(90deg,#7a5a18,var(--accent2));box-shadow:0 0 12px rgba(255,200,97,.5)}
+.divider{height:1px;background:var(--line);margin:12px 0}
+.kv{font-size:10.5px;color:var(--muted);line-height:1.9;display:flex;justify-content:space-between;gap:10px}
+.kv b{color:var(--accent);font-weight:500;text-align:right}
+.selftest{font-size:10.5px;line-height:1.9;margin-top:6px}
+.selftest .row{display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px dashed rgba(var(--accent-rgb),.10);padding:5px 0;margin:0}
+.selftest .pass{color:var(--ok)}
+.selftest .fail{color:var(--danger)}
+.selftest .warn{color:var(--warn)}
+
+/* ---------------- reactor ---------------- */
+#core{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow:hidden}
+.reactor{position:relative;width:min(340px,46vh);aspect-ratio:1;display:grid;place-items:center;flex:0 0 auto}
+.ring{position:absolute;border-radius:50%;border:1px solid rgba(var(--accent-rgb),.28);animation:spin linear infinite}
+.ring::before{content:"";position:absolute;inset:-1px;border-radius:50%;border:1px solid transparent;border-top-color:rgba(var(--accent-rgb),.85)}
+.r1{inset:0;animation-duration:26s}
+.r2{inset:9%;border-style:dashed;border-color:rgba(var(--accent-rgb),.18);animation-duration:18s;animation-direction:reverse}
+.r3{inset:20%;animation-duration:12s}
+.r4{inset:31%;border-style:dotted;border-color:rgba(255,200,97,.3);animation-duration:30s;animation-direction:reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.halo{position:absolute;inset:22%;border-radius:50%;
+  background:radial-gradient(circle, rgba(var(--accent-rgb),.42), rgba(var(--accent-rgb),.10) 55%, transparent 72%);
+  filter:blur(6px);animation:pulse 3.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.08);opacity:1}}
+.reactor.speaking .halo{animation:pulse .7s ease-in-out infinite}
+.reactor.listening .halo{background:radial-gradient(circle, rgba(255,200,97,.6), rgba(255,200,97,.14) 55%, transparent 72%)}
+.corebtn{position:relative;width:34%;aspect-ratio:1;border-radius:50%;border:2px solid rgba(var(--accent-rgb),.6);
+  background:radial-gradient(circle at 50% 45%, #dff8ff, var(--accent) 42%, var(--accent-dim) 78%, #052635);
+  box-shadow:0 0 34px rgba(var(--accent-rgb),.5),0 0 90px rgba(var(--accent-rgb),.25),inset 0 0 26px rgba(255,255,255,.5);
+  transition:transform .16s, box-shadow .3s;display:grid;place-items:center;font-size:26px;color:#04202b}
+.corebtn:active{transform:scale(.95)}
+.corebtn.listening{box-shadow:0 0 44px rgba(255,200,97,.75),0 0 110px rgba(255,200,97,.35),inset 0 0 26px rgba(255,255,255,.6);border-color:var(--accent2)}
+#heard{min-height:18px;font-size:11.5px;color:var(--accent2);letter-spacing:.08em;text-align:center;padding:0 14px;opacity:.95}
+#caption{text-align:center;max-width:540px;min-height:40px;padding:0 14px;font-size:12.5px;line-height:1.65;color:var(--muted)}
+#caption .hl{color:var(--accent)}
+
+/* ---------------- log ---------------- */
+#logbody{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:3px;min-height:0}
+.msg{display:flex;flex-direction:column;gap:2px;animation:slide .25s ease}
+@keyframes slide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg .who{font-size:9px;letter-spacing:.22em;color:var(--muted)}
+.msg .txt{font-size:13px;line-height:1.6;word-wrap:break-word;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.jarvis .who{color:var(--accent)}
+.msg.jarvis .txt{color:#e2f6ff}
+.msg.user{align-items:flex-end;text-align:right}
+.msg.user .who{color:var(--accent2)}
+.msg.user .txt{color:#f7e6c4;background:rgba(255,200,97,.09);border:1px solid rgba(255,200,97,.22);
+  padding:7px 10px;border-radius:10px 10px 2px 10px;max-width:100%}
+.msg.sys .txt{font-size:11px;color:var(--muted);font-style:italic}
+.msg.err .txt{color:var(--danger)}
+
+/* ---------------- footer / composer ---------------- */
+footer{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;
+  border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;
+  background:linear-gradient(90deg, rgba(8,26,40,.92), rgba(6,16,26,.62));
+  backdrop-filter:blur(10px)}
+.micpill{font-size:9.5px;letter-spacing:.18em;color:var(--muted);border:1px solid var(--line);
+  border-radius:999px;padding:4px 11px;display:inline-flex;align-items:center;gap:6px;text-transform:uppercase}
+.micpill.live{color:var(--ok);border-color:rgba(73,227,155,.5);background:rgba(73,227,155,.10);box-shadow:0 0 14px rgba(73,227,155,.25)}
+.micpill.talk{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.12)}
+.micpill.wait{color:var(--accent2);border-color:rgba(255,200,97,.45);background:rgba(255,200,97,.08)}
+.micpill.err{color:var(--danger);border-color:rgba(255,107,107,.5);background:rgba(255,107,107,.10)}
+.chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:7px 13px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(var(--accent-rgb),.06);font-size:11px;color:var(--muted);letter-spacing:.04em;
+  transition:.15s;white-space:nowrap;min-height:34px;display:flex;align-items:center}
+.chip:active{background:rgba(var(--accent-rgb),.24);color:#eaf9ff;transform:scale(.97)}
+.composer{display:flex;gap:8px;align-items:center}
+.prompt{color:var(--accent);font-size:14px;padding-left:4px;opacity:.8}
+#field{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);
+  font-size:16px;padding:10px 4px;letter-spacing:.02em}
+#field::placeholder{color:#3f6373;font-size:14px}
+.micbtn{width:46px;height:46px;border-radius:50%;border:1px solid rgba(var(--accent-rgb),.45);
+  background:rgba(var(--accent-rgb),.12);display:grid;place-items:center;font-size:17px;transition:.18s;flex:0 0 auto}
+.micbtn:active{transform:scale(.94)}
+.micbtn.rec{background:rgba(255,107,107,.25);border-color:var(--danger);animation:pulse 1.1s infinite}
+.sendbtn{border:1px solid rgba(var(--accent-rgb),.45);background:rgba(var(--accent-rgb),.12);
+  border-radius:10px;padding:12px 16px;font-size:11px;letter-spacing:.18em;color:#dff6ff;transition:.18s;flex:0 0 auto}
+.sendbtn:active{background:rgba(var(--accent-rgb),.26)}
+#tabs{display:none;gap:6px}
+#tabs button{flex:1;padding:11px 4px;border-radius:9px;border:1px solid transparent;font-size:10px;
+  letter-spacing:.16em;color:var(--muted);min-height:44px}
+#tabs button.active{background:rgba(var(--accent-rgb),.16);border-color:rgba(var(--accent-rgb),.4);color:#eaf9ff}
+
+/* ---------------- settings sheet ---------------- */
+#settings{position:fixed;inset:0;z-index:90;background:rgba(2,6,11,.86);backdrop-filter:blur(8px);
+  display:none;place-items:center;padding:16px;overflow:auto}
+#settings.open{display:grid}
+.card{width:min(620px,100%);max-height:92dvh;overflow-y:auto;border:1px solid rgba(var(--accent-rgb),.28);
+  border-radius:16px;background:linear-gradient(160deg, rgba(10,30,46,.99), rgba(5,14,23,.99));
+  padding:22px;box-shadow:0 30px 90px rgba(0,0,0,.7)}
+.card h3{margin:0 0 4px;font-size:11px;letter-spacing:.26em;color:var(--accent);font-weight:500}
+.card p.hint{margin:0 0 16px;font-size:11px;color:var(--muted);line-height:1.7}
+.row{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
+.row label{font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+.row input,.row select{background:rgba(var(--accent-rgb),.06);border:1px solid var(--line);border-radius:9px;
+  padding:12px;color:var(--text);font-size:16px;outline:none;width:100%;-webkit-appearance:none;appearance:none}
+.row select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.row input[type=range]{padding:0;height:28px;accent-color:var(--accent)}
+.row input:focus,.row select:focus{border-color:rgba(var(--accent-rgb),.6)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toggle{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text);margin-bottom:11px;
+  cursor:pointer;min-height:44px;padding:2px 0}
+.toggle input{width:20px;height:20px;accent-color:var(--accent);flex:0 0 auto}
+.themerow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.sw{width:44px;height:44px;border-radius:12px;border:2px solid transparent;display:grid;place-items:center;font-size:9px;letter-spacing:.06em}
+.sw.sel{border-color:#fff}
+.actions{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.actions button{border-radius:10px;padding:13px 18px;font-size:11px;letter-spacing:.14em;
+  border:1px solid var(--line);background:transparent;transition:.18s;min-height:44px}
+.actions .primary{background:rgba(var(--accent-rgb),.2);border-color:rgba(var(--accent-rgb),.55);color:#e8f9ff}
+.actions .danger{border-color:rgba(255,107,107,.4);color:#ffb3b3}
+
+/* ---------------- privacy lock ---------------- */
+#lock{position:fixed;inset:0;z-index:95;display:none;place-items:center;background:rgba(2,6,11,.97);
+  backdrop-filter:blur(18px);text-align:center;padding:24px}
+#lock.open{display:grid}
+#lock .lkt{font-size:13px;letter-spacing:.4em;color:var(--accent);margin-bottom:10px}
+#lock .lks{font-size:11px;color:var(--muted);margin-bottom:26px;letter-spacing:.1em}
+#lock button{border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.14);
+  border-radius:12px;padding:16px 34px;letter-spacing:.24em;font-size:12px;color:#eaf9ff}
+
+/* ---------------- responsive ---------------- */
+@media (max-width:1180px){
+  #app{grid-template-columns:260px minmax(0,1fr) 340px}
+}
+@media (max-width:960px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
+    gap:0;padding:0;padding-top:env(safe-area-inset-top)}
+  header{grid-column:1;border-radius:0;border-left:0;border-right:0;border-top:0;
+    padding:0 10px;height:52px;overflow:hidden;gap:8px}
+  .hchip{display:none}
+  .iconbtn{width:36px;height:36px;font-size:14px}
+  .brand{font-size:11px;letter-spacing:.18em;overflow:hidden;text-overflow:ellipsis}
+  #caption{max-width:100%}
+  .panel{border-radius:0;border-left:0;border-right:0;display:none;padding:14px 14px 10px}
+  .panel.active{display:flex}
+  #core{min-height:0;display:none}
+  #core.active{display:flex}
+  .reactor{width:min(62vw,38vh)}
+  footer{grid-column:1;border-radius:0;border-left:0;border-right:0;border-bottom:0;
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom));gap:7px}
+  #tabs{display:flex}
+  .brand{font-size:11.5px;letter-spacing:.22em}
+  .hchip.hide-sm{display:none}
+  #caption{font-size:12px}
+  .card{border-radius:16px;padding:18px;max-height:88dvh}
+}
+@media (max-width:430px){ .grid2{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:380px){
+  .reactor{width:min(58vw,32vh)}
+  .sendbtn{padding:12px 11px;letter-spacing:.1em}
+  .hchip{display:none}
+}
+@media (min-width:961px){
+  .panel{display:flex!important}
+  #tabs{display:none!important}
+}
+@media (orientation:landscape) and (max-height:520px){
+  .reactor{width:min(30vw,52vh)}
+  #core{gap:8px}
+}
+</style>
+</head>
+<body data-theme="cyan">
+<div id="veil"></div>
+
+<div id="boot">
+  <div id="bootlog"></div>
+  <h1>J.A.R.V.I.S.</h1>
+  <div class="sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="brand"><span class="dot" id="statusdot"></span>J.A.R.V.I.S.</div>
+    <div class="spacer"></div>
+    <div class="hchip hide-sm">BRAIN <b id="chipbrain">LOCAL</b></div>
+    <div class="hchip">NET <b id="chipnet">—</b></div>
+    <div class="hchip">BAT <b id="chipbat">—</b></div>
+    <div class="hchip hide-sm">LOCAL <b id="chiptime">--:--</b></div>
+    <button class="iconbtn" id="btnmute" title="Mute">🔊</button>
+    <button class="iconbtn" id="btnwake" title="Wake word">◉</button>
+    <button class="iconbtn" id="btnset" title="Settings">⚙</button>
+  </header>
+
+  <aside class="panel" id="diag">
+    <h2>Diagnostics <span id="uptime">00:00:00</span></h2>
+    <div id="diagbody">
+      <div class="gauge"><div class="lab"><span>NEURAL LOAD</span><b id="v-load">0%</b></div><div class="bar"><i id="b-load"></i></div></div>
+      <div class="gauge"><div class="lab"><span>BATTERY</span><b id="v-bat">—</b></div><div class="bar gold"><i id="b-bat"></i></div></div>
+      <div class="gauge"><div class="lab"><span>STORAGE USED</span><b id="v-store">—</b></div><div class="bar"><i id="b-store"></i></div></div>
+      <div class="gauge"><div class="lab"><span>NETWORK LATENCY</span><b id="v-net">—</b></div><div class="bar"><i id="b-net"></i></div></div>
+
+      <div class="divider"></div>
+      <div class="kv"><span>OPERATOR</span><b id="k-name">sir</b></div>
+      <div class="kv"><span>DEVICE</span><b id="k-dev">—</b></div>
+      <div class="kv"><span>CONNECTION</span><b id="k-conn">—</b></div>
+      <div class="kv"><span>CORES</span><b id="k-cores">—</b></div>
+      <div class="kv"><span>MEMORY ITEMS</span><b id="k-notes">0</b></div>
+      <div class="kv"><span>ALERTS ARMED</span><b id="k-rem">0</b></div>
+      <div class="kv"><span>ARMOR</span><b id="k-theme">MARK III</b></div>
+      <div class="kv"><span>SECURE CONTEXT</span><b id="k-sec">—</b></div>
+
+      <div class="divider"></div>
+      <div class="kv"><span>SELF-TEST</span><b id="k-test">not run</b></div>
+      <div class="selftest" id="selftest"></div>
+    </div>
+  </aside>
+
+  <section class="panel active" id="core">
+    <div class="reactor" id="reactor">
+      <div class="halo"></div>
+      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="ring r4"></div>
+      <button class="corebtn" id="corebtn" aria-label="Speak">◈</button>
+    </div>
+    <div id="micpill" class="micpill">IDLE</div>
+    <div id="heard"></div>
+    <div id="caption">All systems online. Tap the core or press <span class="hl">space</span> to speak.</div>
+  </section>
+
+  <aside class="panel" id="log">
+    <h2>Transcript <span id="logcount">0</span></h2>
+    <div id="logbody"></div>
+  </aside>
+
+  <footer>
+    <div class="chips" id="chips"></div>
+    <div class="composer">
+      <span class="prompt">&gt;</span>
+      <input id="field" type="text" autocomplete="off" autocapitalize="sentences" spellcheck="false"
+             placeholder="Speak or type — try “help”" />
+      <button class="micbtn" id="micbtn" aria-label="Push to talk">🎙</button>
+      <button class="sendbtn" id="sendbtn">SEND</button>
+    </div>
+    <nav id="tabs">
+      <button data-view="core" class="active">CORE</button>
+      <button data-view="log">LOG</button>
+      <button data-view="diag">DIAG</button>
+    </nav>
+  </footer>
+</div>
+
+<div id="settings">
+  <div class="card">
+    <h3>CONFIGURATION</h3>
+    <p class="hint">Stored in this browser only. Nothing leaves your device except the services you explicitly query and the AI provider you configure below.</p>
+
+    <div class="row"><label>Armor mark (theme)</label>
+      <div class="themerow" id="themerow"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="row"><label>Operator name</label><input id="s-name" type="text" placeholder="sir" /></div>
+      <div class="row"><label>Recognition language</label><select id="s-lang"></select></div>
+    </div>
+
+    <div class="row"><label>Voice</label><select id="s-voice"></select></div>
+
+    <div class="grid2">
+      <div class="row"><label>Speech rate</label><input id="s-rate" type="range" min="0.6" max="1.5" step="0.05" /></div>
+      <div class="row"><label>Pitch</label><input id="s-pitch" type="range" min="0.5" max="1.4" step="0.02" /></div>
+    </div>
+
+    <label class="toggle"><input type="checkbox" id="s-muted" /> Mute spoken replies</label>
+    <div class="row"><label>Listening mode</label>
+      <select id="s-mode">
+        <option value="off">Off — tap the core to speak</option>
+        <option value="wake">Wake word — say “Jarvis …” first</option>
+        <option value="always">Always on — answer everything I say</option>
+      </select>
+    </div>
+    <label class="toggle"><input type="checkbox" id="s-cont" /> Continuous conversation — listen again after each reply</label>
+    <label class="toggle"><input type="checkbox" id="s-notif" /> System notifications for reminders</label>
+    <label class="toggle"><input type="checkbox" id="s-haptic" /> Haptic feedback (vibration)</label>
+
+    <div class="divider"></div>
+    <h3 style="margin-bottom:6px">AI BRAIN</h3>
+    <p class="hint">This is what makes conversation real. Pick a provider, paste a key, and JARVIS answers anything — and speaks with a neural voice instead of the robotic browser one. Groq and Google Gemini both have free tiers.</p>
+
+    <div class="row"><label>Provider</label><select id="s-provider"></select></div>
+    <div class="row"><label>API key <span id="s-keylink"></span></label>
+      <input id="s-key" type="password" placeholder="paste your key" autocomplete="off" />
+    </div>
+    <div class="grid2">
+      <div class="row"><label>Model</label><input id="s-model" type="text" placeholder="gpt-4o-mini" /></div>
+      <div class="row"><label>Base URL</label><input id="s-base" type="text" placeholder="https://api.openai.com/v1" /></div>
+    </div>
+
+    <div class="row"><label>Voice engine</label>
+      <select id="s-tts">
+        <option value="auto">Auto — neural when available, else browser</option>
+        <option value="neural">Neural — much better quality</option>
+        <option value="browser">Browser voice — offline</option>
+      </select>
+    </div>
+    <div class="grid2">
+      <div class="row"><label>Neural voice</label>
+        <select id="s-ttsvoice">
+          <option value="onyx">Onyx — deep male</option>
+          <option value="echo">Echo — male</option>
+          <option value="fable">Fable — British</option>
+          <option value="alloy">Alloy — neutral</option>
+          <option value="nova">Nova — female</option>
+          <option value="shimmer">Shimmer — female</option>
+        </select>
+      </div>
+      <div class="row"><label>Neural model</label><input id="s-ttsmodel" type="text" placeholder="tts-1" /></div>
+    </div>
+
+    <div class="actions" style="justify-content:flex-start;margin:4px 0 0">
+      <button id="s-testvoice">TEST VOICE</button>
+      <button id="s-testbrain">TEST BRAIN</button>
+    </div>
+
+    <div class="actions">
+      <button class="danger" id="s-clear">WIPE MEMORY</button>
+      <button id="s-export">EXPORT DATA</button>
+      <button class="primary" id="s-save">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<div id="lock">
+  <div>
+    <div class="lkt">SECURITY LOCK</div>
+    <div class="lks">Interface sealed. No data is being displayed.</div>
+    <button id="unlock">UNLOCK</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================
+   J.A.R.V.I.S. — single-file personal AI assistant
+   ========================================================== */
+const $ = id => document.getElementById(id);
+const S = {
+  get(k, d){ try { const v = localStorage.getItem('jarvis.' + k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem('jarvis.' + k, JSON.stringify(v)); return true; } catch(e){ return false; } }
+};
+
+const state = {
+  name: S.get('name','sir'),
+  voice: S.get('voice',''),
+  lang: S.get('lang','en-IN'),
+  rate: S.get('rate',1),
+  pitch: S.get('pitch',0.92),
+  muted: S.get('muted',false),
+  wake: S.get('wake',false),
+  mode: S.get('mode', S.get('wake', false) ? 'wake' : 'off'),
+  provider: S.get('provider',''),
+  ttsEngine: S.get('ttsEngine','auto'),
+  ttsVoice: S.get('ttsVoice','onyx'),
+  ttsModel: S.get('ttsModel','tts-1'),
+  cont: S.get('cont',false),
+  notif: S.get('notif',false),
+  haptic: S.get('haptic',true),
+  theme: S.get('theme','cyan'),
+  llmBase: S.get('llmBase',''),
+  llmModel: S.get('llmModel',''),
+  llmKey: S.get('llmKey',''),
+  notes: S.get('notes',[]),
+  reminders: S.get('reminders',[]),
+  history: []
+};
+document.body.dataset.theme = state.theme;
+
+const THEMES = [
+  { id:'cyan',   label:'CLASSIC', c:'#3ad7ff' },
+  { id:'mark3',  label:'MARK III', c:'#ff5a3c' },
+  { id:'mark42', label:'MARK 42', c:'#ffc861' },
+  { id:'stealth',label:'STEALTH', c:'#b48cff' },
+  { id:'war',    label:'WAR', c:'#cfd8dc' }
+];
+
+const el = {
+  app:$('app'), boot:$('boot'), bootlog:$('bootlog'),
+  reactor:$('reactor'), corebtn:$('corebtn'), caption:$('caption'), heard:$('heard'),
+  logbody:$('logbody'), logcount:$('logcount'), field:$('field'),
+  micbtn:$('micbtn'), sendbtn:$('sendbtn'), chips:$('chips'),
+  chiptime:$('chiptime'), chipbrain:$('chipbrain'), chipnet:$('chipnet'), chipbat:$('chipbat'),
+  btnmute:$('btnmute'), btnwake:$('btnwake'), btnset:$('btnset'),
+  settings:$('settings'), lock:$('lock'), tabs:document.querySelectorAll('#tabs button')
+};
+
+/* ---------------- logging ---------------- */
+let msgCount = 0;
+function log(role, text, cls){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role + (cls ? ' ' + cls : '');
+  const who = document.createElement('div');
+  who.className = 'who';
+  who.textContent = role === 'user' ? 'OPERATOR' : role === 'jarvis' ? 'J.A.R.V.I.S.' : role === 'err' ? 'FAULT' : 'SYSTEM';
+  const txt = document.createElement('div');
+  txt.className = 'txt'; txt.textContent = text;
+  wrap.appendChild(who); wrap.appendChild(txt);
+  el.logbody.appendChild(wrap);
+  el.logbody.scrollTop = el.logbody.scrollHeight;
+  el.logcount.textContent = ++msgCount;
+  if(el.logbody.children.length > 300) el.logbody.removeChild(el.logbody.firstChild);
+  return txt;
+}
+function say(text){ log('jarvis', text); speak(text); }
+
+/* ---------------- haptics / beeps ---------------- */
+function buzz(ms){ try { if(state.haptic && navigator.vibrate) navigator.vibrate(ms || 12); } catch(e){} }
+function beep(freq, dur){
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext; if(!Ctx) return;
+    if(!beep.ctx) beep.ctx = new Ctx();
+    const ctx = beep.ctx, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = freq || 880;
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (dur || 0.5));
+    o.start(); o.stop(ctx.currentTime + (dur || 0.5) + 0.05);
+  } catch(e){}
+}
+
+/* ---------------- speech out ---------------- */
+let voices = [];
+function loadVoices(){
+  voices = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  const sel = $('s-voice'); if(!sel) return;
+  sel.innerHTML = '<option value="">Auto — prefer British male</option>';
+  voices.filter(v => /^en/i.test(v.lang)).forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.name; o.textContent = v.name + ' — ' + v.lang;
+    sel.appendChild(o);
+  });
+  sel.value = state.voice;
+}
+if(window.speechSynthesis){ speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
+
+const VOICE_RANK = [
+  /google uk english male/i, /google uk english female/i,
+  /microsoft (ryan|guy|george|thomas|oliver|libby|sonia|natasha)/i,
+  /daniel/i, /arthur/i, /google us english/i, /samantha/i,
+  /microsoft (aria|jenny|andrew)/i, /en[-_]gb/i, /en[-_]in/i, /^en/i
+];
+function pickVoice(){
+  if(state.voice){ const v = voices.find(x => x.name === state.voice); if(v) return v; }
+  for(const re of VOICE_RANK){
+    const v = voices.find(x => re.test(x.name) || re.test(x.voiceURI || ''));
+    if(v) return v;
+  }
+  return voices[0] || null;
+}
+
+function chunkText(t){
+  const clean = String(t).replace(/[*_`#>]/g, ' ').replace(/\s+/g, ' ').trim();
+  if(clean.length < 180) return [clean];
+  const parts = clean.split(/(?<=[.!?;:])\s+/);
+  const out = []; let buf = '';
+  parts.forEach(p => {
+    if((buf + ' ' + p).trim().length > 170){ if(buf) out.push(buf.trim()); buf = p; }
+    else buf = (buf + ' ' + p).trim();
+  });
+  if(buf) out.push(buf.trim());
+  return out.filter(Boolean);
+}
+
+let speaking = false;
+let speakToken = 0;
+let currentAudio = null;
+let currentSpoken = '';
+
+function stopSpeaking(){
+  speakToken++;
+  speaking = false;
+  try { if(window.speechSynthesis) speechSynthesis.cancel(); } catch(e){}
+  if(currentAudio){ try { currentAudio.pause(); } catch(e){} currentAudio = null; }
+  el.reactor.classList.remove('speaking');
+  micStatus();
+}
+
+function playAudioBlob(blob, token){
+  return new Promise((resolve, reject) => {
+    let url;
+    try {
+      url = URL.createObjectURL(blob);
+      const a = new Audio(url);
+      currentAudio = a;
+      let settled = false;
+      const finish = ok => {
+        if(settled) return; settled = true;
+        try { URL.revokeObjectURL(url); } catch(e){}
+        if(currentAudio === a) currentAudio = null;
+        ok ? resolve(true) : reject(new Error('playback failed'));
+      };
+      a.onended = () => finish(true);
+      a.onerror = () => finish(false);
+      const pr = a.play();
+      if(pr && pr.catch) pr.catch(() => finish(false));
+    } catch(e){ reject(e); }
+  });
+}
+
+async function speakNeural(text, token){
+  const base = (state.llmBase || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  const res = await fetch(base + '/audio/speech', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + state.llmKey },
+    body: JSON.stringify({
+      model: state.ttsModel || 'tts-1',
+      voice: state.ttsVoice || 'onyx',
+      input: String(text).replace(/[*_`#>]/g,'').slice(0, 1200),
+      response_format: 'mp3'
+    })
+  });
+  if(!res.ok) throw new Error('neural tts ' + res.status);
+  const blob = await res.blob();
+  if(token !== speakToken) return true;
+  return playAudioBlob(blob, token);
+}
+
+function speakBrowser(text, token, finish){
+  if(!window.speechSynthesis){ setTimeout(finish, 400); return; }
+  const chunks = chunkText(text);
+  let i = 0;
+  const next = () => {
+    if(token !== speakToken) return;
+    if(i >= chunks.length) return finish();
+    try {
+      const u = new SpeechSynthesisUtterance(chunks[i++]);
+      const v = pickVoice(); if(v) u.voice = v;
+      u.rate = Number(state.rate) || 1;
+      u.pitch = Number(state.pitch) || 0.92;
+      u.onend = next;
+      u.onerror = next;
+      speechSynthesis.speak(u);
+    } catch(e){ finish(); }
+  };
+  next();
+  setTimeout(() => { if(token === speakToken && speaking) finish(); },
+    Math.min(90000, 3500 + String(text).length * 95));
+}
+
+function speak(text){
+  if(!text) return;
+  stopSpeaking();
+  currentSpoken = String(text).toLowerCase();
+  const token = ++speakToken;
+  speaking = true;
+  el.reactor.classList.add('speaking');
+  micStatus();
+
+  let finished = false;
+  const finish = () => {
+    if(finished || token !== speakToken) return;
+    finished = true;
+    speaking = false;
+    el.reactor.classList.remove('speaking');
+    micStatus();
+    if(mode !== 'off' && !listening) setTimeout(safeStart, 320);
+  };
+
+  if(state.muted){ setTimeout(finish, 400); return; }
+
+  const wantNeural = state.ttsEngine !== 'browser' && !!state.llmKey && state.ttsModel !== 'none';
+  if(wantNeural){
+    speakNeural(text, token)
+      .then(() => finish())
+      .catch(() => { if(token === speakToken) speakBrowser(text, token, finish); });
+    return;
+  }
+  speakBrowser(text, token, finish);
+}
+
+/* ---------------- speech in ---------------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null, listening = false, starting = false, wantListening = false;
+let mode = state.mode;            // 'off' | 'wake' | 'always'
+let lastUtter = { text:'', at:0 };
+let restartDelay = 300;
+let micFatal = false;
+
+const WAKE_RE = /\bj[ae]r\w{0,4}s\b/i;     // tolerant: jarvis / jervis / jarvus / javis
+
+function micStatus(){
+  const pill = $('micpill');
+  if(!pill) return;
+  if(micFatal){ pill.textContent = 'MIC BLOCKED'; pill.className = 'micpill err'; return; }
+  if(speaking){ pill.textContent = 'SPEAKING'; pill.className = 'micpill talk'; return; }
+  if(listening){ pill.textContent = 'LISTENING'; pill.className = 'micpill live'; return; }
+  if(mode !== 'off'){ pill.textContent = 'CONNECTING'; pill.className = 'micpill wait'; return; }
+  pill.textContent = 'IDLE'; pill.className = 'micpill';
+}
+
+function buildRecognizer(){
+  if(!SR) return null;
+  const r = new SR();
+  r.lang = state.lang;
+  r.continuous = true;
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+
+  r.onstart = () => {
+    starting = false; listening = true; restartDelay = 300; micFatal = false;
+    el.micbtn.classList.add('rec');
+    el.corebtn.classList.add('listening');
+    el.reactor.classList.add('listening');
+    micStatus();
+    if(mode !== 'off') setCaption('Listening…');
+    requestWakeLock();
+  };
+
+  r.onresult = ev => {
+    let interim = '', final = '';
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const t = ev.results[i][0].transcript;
+      if(ev.results[i].isFinal) final += t; else interim += t;
+    }
+    el.heard.textContent = (final || interim).trim();
+    if(final.trim()){
+      const heard = final.trim();
+      if(speaking){
+        /* allow a real interruption, but ignore our own voice echoing back */
+        const words = heard.split(/\s+/).filter(Boolean).length;
+        const isEcho = currentSpoken.includes(heard.toLowerCase());
+        if(words >= 3 && !isEcho){ stopSpeaking(); }
+        else return;
+      }
+      el.heard.textContent = '';
+      if(mode === 'off'){ wantListening = false; try { r.stop(); } catch(e){} }
+      handleInput(heard, mode);
+    }
+  };
+
+  r.onerror = ev => {
+    starting = false;
+    const err = ev.error;
+    if(err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture'){
+      micFatal = true;
+      mode = 'off'; state.mode = 'off'; S.set('mode','off'); wantListening = false;
+      updateModeUI(); micStatus();
+      setCaption('Microphone unavailable — allow access, or open over https / localhost.');
+      log('sys', 'Microphone error: ' + err + '. Allow microphone access in the address bar. If you opened this file directly, serve it over http://localhost — browsers block the mic on file:// URLs. Typing and the AI brain still work.', 'err');
+    } else if(err === 'network'){
+      setCaption('Speech service unreachable — check your connection.');
+    } else if(err === 'no-speech' || err === 'aborted'){
+      /* expected during a long listening session */
+    } else {
+      log('sys', 'Recognition: ' + err, 'err');
+    }
+  };
+
+  r.onend = () => {
+    starting = false; listening = false;
+    el.micbtn.classList.remove('rec');
+    el.corebtn.classList.remove('listening');
+    el.reactor.classList.remove('listening');
+    releaseWakeLock();
+    micStatus();
+    if(mode !== 'off' && !speaking && !micFatal) scheduleRestart();
+    else if(!wantListening && mode === 'off') setCaption(idleCaption());
+  };
+  return r;
+}
+
+function scheduleRestart(){
+  restartDelay = Math.min(2500, Math.round(restartDelay * 1.5));
+  setTimeout(() => {
+    if(mode !== 'off' && !listening && !speaking && !starting && !micFatal) safeStart();
+  }, restartDelay);
+}
+
+function safeStart(){
+  if(micFatal) return;
+  if(!recog) recog = buildRecognizer();
+  if(!recog || listening || starting) return;
+  starting = true;
+  try { recog.lang = state.lang; recog.start(); }
+  catch(e){
+    starting = false;
+    setTimeout(() => { if(mode !== 'off' && !listening) safeStart(); }, 700);
+  }
+}
+
+function toggleMic(){
+  if(!SR){
+    setCaption('This browser has no speech recognition. Use Chrome, Edge or Safari — or type below.');
+    log('sys', 'Speech recognition unavailable here. Chrome, Edge and Safari support it; typing works everywhere.', 'err');
+    return;
+  }
+  buzz(10);
+  if(mode !== 'off'){ setMode('off'); say('Listening mode off, ' + state.name + '.'); return; }
+  if(listening){ wantListening = false; if(recog) recog.stop(); return; }
+  wantListening = true;
+  safeStart();
+}
+
+function setCaption(html){ el.caption.innerHTML = html; }
+function idleCaption(){
+  if(mode === 'always') return 'Always listening — <span class="hl">just speak</span>. No wake word needed.';
+  if(mode === 'wake') return 'Wake-word mode active — say <span class="hl">“Jarvis …”</span>';
+  return 'Standing by. Tap the core or press <span class="hl">space</span> to speak.';
+}
+
+/* words that should not trigger a reply in always-on mode */
+const FILLER = /^(um+|uh+|hmm+|ah+|oh+|er+|mm+|mhm|huh|ok|okay|yeah|yep|nope|so|well|right|alright|mm-hmm)[.!?,]*$/i;
+function isWorthAnswering(t){
+  const s = String(t).replace(/[^\w\s'?-]/g,' ').replace(/\s+/g,' ').trim();
+  if(s.length < 3) return false;
+  if(FILLER.test(s)) return false;
+  return true;
+}
+
+/* ---------------- screen wake lock ---------------- */
+let wakeLockRef = null;
+async function requestWakeLock(){
+  try { if('wakeLock' in navigator && !wakeLockRef) wakeLockRef = await navigator.wakeLock.request('screen'); }
+  catch(e){}
+}
+function releaseWakeLock(){
+  try { if(wakeLockRef){ wakeLockRef.release(); wakeLockRef = null; } } catch(e){}
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && mode !== 'off' && !listening) safeStart();
+});
+
+/* ==========================================================
+   SERVICES
+   ========================================================== */
+const WCODE = {
+  0:'clear skies',1:'mainly clear skies',2:'partly cloudy skies',3:'overcast skies',45:'fog',48:'rime fog',
+  51:'light drizzle',53:'moderate drizzle',55:'dense drizzle',56:'freezing drizzle',57:'dense freezing drizzle',
+  61:'slight rain',63:'moderate rain',65:'heavy rain',66:'freezing rain',67:'heavy freezing rain',
+  71:'slight snow',73:'moderate snow',75:'heavy snow',77:'snow grains',
+  80:'light rain showers',81:'moderate rain showers',82:'violent rain showers',
+  85:'snow showers',86:'heavy snow showers',95:'a thunderstorm',96:'a thunderstorm with hail',99:'a severe thunderstorm with hail'
+};
+
+async function fetchJSON(url, opts){
+  const r = await fetch(url, opts);
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function geocode(place){
+  const g = await fetchJSON('https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&name=' + encodeURIComponent(place));
+  if(!g.results || !g.results.length) return null;
+  const h = g.results[0];
+  return { lat:h.latitude, lon:h.longitude, label:[h.name, h.country].filter(Boolean).join(', ') };
+}
+function here(){
+  return new Promise((res, rej) => {
+    if(!navigator.geolocation) return rej(new Error('no geolocation'));
+    navigator.geolocation.getCurrentPosition(res, rej, { timeout: 9000, maximumAge: 300000 });
+  });
+}
+
+async function getWeather(place, mode){
+  let lat, lon, label;
+  if(place){
+    const g = await geocode(place);
+    if(!g) return 'I could not locate “' + place + '”, ' + state.name + '.';
+    lat = g.lat; lon = g.lon; label = g.label;
+  } else {
+    const pos = await here();
+    lat = pos.coords.latitude; lon = pos.coords.longitude; label = 'your current location';
+  }
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon
+    + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,is_day'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max'
+    + '&timezone=auto&forecast_days=4';
+  const w = await fetchJSON(url);
+  const c = w.current, d = w.daily;
+
+  if(mode === 'forecast'){
+    const lines = d.time.slice(0, 4).map((t, i) => {
+      const day = i === 0 ? 'Today' : new Date(t + 'T12:00:00').toLocaleDateString(undefined, { weekday:'long' });
+      return day + ': ' + (WCODE[d.weather_code[i]] || '—') + ', ' + Math.round(d.temperature_2m_min[i]) + '° to '
+        + Math.round(d.temperature_2m_max[i]) + '°, ' + (d.precipitation_probability_max[i] || 0) + '% chance of rain';
+    });
+    return 'Forecast for ' + label + ':\n' + lines.join('\n');
+  }
+
+  let out = 'In ' + label + ' it is ' + Math.round(c.temperature_2m) + ' degrees Celsius with '
+    + (WCODE[c.weather_code] || 'unremarkable conditions') + '. Feels like ' + Math.round(c.apparent_temperature)
+    + ', humidity ' + c.relative_humidity_2m + ' percent, wind ' + Math.round(c.wind_speed_10m) + ' kilometres per hour.';
+
+  if(mode === 'full'){
+    const rise = d.sunrise[0] ? new Date(d.sunrise[0]).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '—';
+    const set = d.sunset[0] ? new Date(d.sunset[0]).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '—';
+    out += '\nToday ranges from ' + Math.round(d.temperature_2m_min[0]) + '° to ' + Math.round(d.temperature_2m_max[0])
+      + '°, with a ' + (d.precipitation_probability_max[0] || 0) + ' percent chance of precipitation.'
+      + '\nSunrise ' + rise + ', sunset ' + set + '.';
+  }
+  return out;
+}
+
+async function getAir(place){
+  let lat, lon, label;
+  if(place){
+    const g = await geocode(place); if(!g) return 'I could not locate “' + place + '”.';
+    lat = g.lat; lon = g.lon; label = g.label;
+  } else {
+    const pos = await here(); lat = pos.coords.latitude; lon = pos.coords.longitude; label = 'your location';
+  }
+  const a = await fetchJSON('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + lat + '&longitude=' + lon
+    + '&current=us_aqi,pm2_5,pm10,ozone&timezone=auto');
+  const c = a.current, aqi = c.us_aqi;
+  const band = aqi <= 50 ? 'good' : aqi <= 100 ? 'moderate' : aqi <= 150 ? 'unhealthy for sensitive groups'
+    : aqi <= 200 ? 'unhealthy' : aqi <= 300 ? 'very unhealthy' : 'hazardous';
+  return 'Air quality in ' + label + ': US AQI ' + Math.round(aqi) + ' — ' + band
+    + '. PM2.5 ' + (Math.round(c.pm2_5 * 10) / 10) + ' micrograms per cubic metre, PM10 ' + Math.round(c.pm10) + '.';
+}
+
+async function wikipedia(query){
+  const s = await fetchJSON('https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&origin=*&srsearch=' + encodeURIComponent(query));
+  const hit = s && s.query && s.query.search && s.query.search[0];
+  if(!hit) return null;
+  const sum = await fetchJSON('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(hit.title.replace(/ /g,'_')));
+  return sum && sum.extract ? { title: sum.title, extract: sum.extract } : null;
+}
+
+async function define(word){
+  const r = await fetchJSON('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word));
+  const e = Array.isArray(r) ? r[0] : null;
+  if(!e) return null;
+  const m = (e.meanings && e.meanings[0]) || {};
+  const def = (m.definitions && m.definitions[0] && m.definitions[0].definition) || '';
+  return { word: e.word, pos: m.partOfSpeech || '', def: def };
+}
+
+async function translate(text, target){
+  const r = await fetchJSON('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=en|' + target);
+  const out = r && r.responseData && r.responseData.translatedText;
+  if(!out || /^MYMEMORY WARNING/i.test(out)) return null;
+  return out;
+}
+
+let fxCache = null;
+async function getRates(){
+  if(fxCache && Date.now() - fxCache.at < 3600000) return fxCache.rates;
+  const r = await fetchJSON('https://open.er-api.com/v6/latest/USD');
+  if(!r || !r.rates) throw new Error('rates unavailable');
+  fxCache = { at: Date.now(), rates: r.rates };
+  return r.rates;
+}
+
+async function news(count){
+  const ids = await fetchJSON('https://hacker-news.firebaseio.com/v0/topstories.json');
+  const pick = ids.slice(0, count || 5);
+  const items = await Promise.all(pick.map(id =>
+    fetchJSON('https://hacker-news.firebaseio.com/v0/item/' + id + '.json').catch(() => null)
+  ));
+  return items.filter(Boolean).map((it, i) => (i + 1) + '. ' + it.title);
+}
+
+const PROVIDERS = {
+  openai:     { label:'OpenAI',                     base:'https://api.openai.com/v1',
+                model:'gpt-4o-mini',                 keys:'https://platform.openai.com/api-keys' },
+  groq:       { label:'Groq — free tier',           base:'https://api.groq.com/openai/v1',
+                model:'llama-3.3-70b-versatile',     keys:'https://console.groq.com/keys' },
+  gemini:     { label:'Google Gemini — free tier',  base:'https://generativelanguage.googleapis.com/v1beta/openai',
+                model:'gemini-2.0-flash',            keys:'https://aistudio.google.com/apikey' },
+  openrouter: { label:'OpenRouter',                 base:'https://openrouter.ai/api/v1',
+                model:'openai/gpt-4o-mini',          keys:'https://openrouter.ai/keys' },
+  ollama:     { label:'Ollama — local, no key',     base:'http://localhost:11434/v1',
+                model:'llama3.1',                    keys:'https://ollama.com/download' },
+  custom:     { label:'Custom OpenAI-compatible',   base:'', model:'', keys:'' }
+};
+
+function brainPrompt(){
+  return 'You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), personal AI assistant to ' + state.name + '. '
+    + 'Speak like a calm, precise British butler-engineer: dry wit, total competence, never servile, never rambling. '
+    + 'Address the user as "' + state.name + '". '
+    + 'Your words are spoken aloud by a text-to-speech engine, so reply in natural spoken sentences: no markdown, '
+    + 'no bullet points, no asterisks, no emoji, no code blocks unless explicitly requested. '
+    + 'Default to two or three sentences; go longer only when the question truly needs it. '
+    + 'You live inside a web app on a phone or computer. You cannot control physical hardware, vehicles, weapons or '
+    + 'buildings — if asked, say so in one short line and offer the closest real alternative. '
+    + 'The user is likely in India: prefer rupees, IST and Indian context unless they indicate otherwise.';
+}
+
+function brainReady(){
+  return !!(state.llmKey || /localhost|127\.0\.0\.1/.test(state.llmBase || ''));
+}
+
+async function askBrain(prompt, onDelta){
+  if(!brainReady()) return null;
+  const base = (state.llmBase || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  const model = state.llmModel || 'gpt-4o-mini';
+  const msgs = [{ role:'system', content: brainPrompt() }]
+    .concat(state.history.slice(-12))
+    .concat([{ role:'user', content: prompt }]);
+
+  const headers = { 'Content-Type':'application/json' };
+  if(state.llmKey) headers['Authorization'] = 'Bearer ' + state.llmKey;
+
+  const wantStream = !!onDelta && typeof TextDecoder !== 'undefined';
+  const res = await fetch(base + '/chat/completions', {
+    method:'POST', headers,
+    body: JSON.stringify({ model, messages: msgs, temperature:0.7, max_tokens:500, stream: wantStream })
+  });
+  if(!res.ok){
+    const body = await res.text().catch(() => '');
+    throw new Error('API ' + res.status + (body ? ' — ' + body.slice(0,180) : ''));
+  }
+
+  let out = '';
+  if(wantStream && res.body && res.body.getReader){
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while(true){
+      const chunk = await reader.read();
+      if(chunk.done) break;
+      buf += dec.decode(chunk.value, { stream:true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for(const line of lines){
+        const t = line.trim();
+        if(!t.startsWith('data:')) continue;
+        const payload = t.slice(5).trim();
+        if(payload === '[DONE]') continue;
+        try {
+          const j = JSON.parse(payload);
+          const d = j.choices && j.choices[0] && (j.choices[0].delta || j.choices[0].message || {});
+          if(d && d.content){ out += d.content; onDelta(out); }
+        } catch(e){}
+      }
+    }
+  } else {
+    const data = await res.json();
+    out = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  }
+
+  out = String(out).trim();
+  if(!out) return null;
+  state.history.push({ role:'user', content: prompt }, { role:'assistant', content: out });
+  if(state.history.length > 20) state.history = state.history.slice(-20);
+  return out;
+}
+
+/* ==========================================================
+   PURE UTILITIES
+   ========================================================== */
+function fmtDuration(sec){
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const p = [];
+  if(h) p.push(h + ' hour' + (h > 1 ? 's' : ''));
+  if(m) p.push(m + ' minute' + (m > 1 ? 's' : ''));
+  if(s || !p.length) p.push(s + ' second' + (s === 1 ? '' : 's'));
+  return p.join(' ');
+}
+
+function tryMath(cmd){
+  let s = cmd
+    .replace(/^(hey |ok |okay )?jarvis[, ]*/,'')
+    .replace(/^(please |kindly )/,'')
+    .replace(/\b(what is|what's|whats|how much is|calculate|compute|evaluate|solve|equals?)\b/g,'')
+    .replace(/\bplus\b/g,'+').replace(/\bminus\b/g,'-')
+    .replace(/\btimes\b/g,'*').replace(/\bmultiplied by\b/g,'*')
+    .replace(/\bdivided by\b/g,'/').replace(/\bover\b/g,'/')
+    .replace(/\bmodulo\b/g,'%').replace(/\bto the power of\b/g,'^')
+    .replace(/\bpercent of\b/g,'% of').replace(/[?=]/g,'').trim();
+
+  const pct = s.match(/^([\d.]+)\s*%\s*of\s*([\d.]+)$/);
+  if(pct){
+    const v = (parseFloat(pct[1]) / 100) * parseFloat(pct[2]);
+    return pct[1] + ' percent of ' + pct[2] + ' is ' + (+v.toFixed(6));
+  }
+  let expr = s.replace(/\^/g,'**').replace(/x/gi,'*');
+  expr = expr.replace(/\bsqrt\s*\(/g,'Math.sqrt(').replace(/\bsin\s*\(/g,'Math.sin(')
+             .replace(/\bcos\s*\(/g,'Math.cos(').replace(/\btan\s*\(/g,'Math.tan(')
+             .replace(/\blog\s*\(/g,'Math.log10(').replace(/\bln\s*\(/g,'Math.log(')
+             .replace(/\babs\s*\(/g,'Math.abs(');
+  if(!/^[\d\s+\-*/().%a-zA-Z]+$/.test(expr)) return null;
+  if(!/\d/.test(expr)) return null;
+  if(!/[+\-*/%]|Math\./.test(expr)) return null;
+  if(/[a-zA-Z]/.test(expr.replace(/Math\.(sqrt|sin|cos|tan|log10|log|abs)/g,''))) return null;
+  try {
+    const val = Function('"use strict";return (' + expr + ')')();
+    if(typeof val !== 'number' || !isFinite(val)) return null;
+    return s.replace(/\*\*/g,'^') + ' equals ' + (+val.toFixed(8));
+  } catch(e){ return null; }
+}
+
+function parseWhen(str){
+  const now = new Date();
+  let m = str.match(/in\s+(\d+)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b/);
+  if(m){
+    const n = parseInt(m[1], 10);
+    const unit = m[2][0] === 'h' ? 3600 : (m[2][0] === 'm' ? 60 : 1);
+    return { at: Date.now() + n * unit * 1000, phrase: 'in ' + fmtDuration(n * unit) };
+  }
+  m = str.match(/\b(?:at|by)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+  if(m){
+    let h = parseInt(m[1], 10);
+    const mi = m[2] ? parseInt(m[2], 10) : 0, ap = m[3];
+    if(ap === 'pm' && h < 12) h += 12;
+    if(ap === 'am' && h === 12) h = 0;
+    const d = new Date(now); d.setHours(h, mi, 0, 0);
+    if(d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1);
+    return { at: d.getTime(), phrase: 'at ' + d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) };
+  }
+  return null;
+}
+
+const UNITS = {
+  m:{ d:'length', f:1 }, km:{ d:'length', f:1000 }, cm:{ d:'length', f:0.01 }, mm:{ d:'length', f:0.001 },
+  mile:{ d:'length', f:1609.344 }, miles:{ d:'length', f:1609.344 }, mi:{ d:'length', f:1609.344 },
+  ft:{ d:'length', f:0.3048 }, feet:{ d:'length', f:0.3048 }, foot:{ d:'length', f:0.3048 },
+  inch:{ d:'length', f:0.0254 }, inches:{ d:'length', f:0.0254 }, in:{ d:'length', f:0.0254 },
+  yard:{ d:'length', f:0.9144 }, yards:{ d:'length', f:0.9144 },
+  g:{ d:'mass', f:1 }, kg:{ d:'mass', f:1000 }, mg:{ d:'mass', f:0.001 },
+  lb:{ d:'mass', f:453.592 }, lbs:{ d:'mass', f:453.592 }, pound:{ d:'mass', f:453.592 },
+  pounds:{ d:'mass', f:453.592 }, oz:{ d:'mass', f:28.3495 }, tonne:{ d:'mass', f:1000000 },
+  l:{ d:'volume', f:1 }, litre:{ d:'volume', f:1 }, liter:{ d:'volume', f:1 },
+  ml:{ d:'volume', f:0.001 }, gallon:{ d:'volume', f:3.78541 }, gallons:{ d:'volume', f:3.78541 },
+  cup:{ d:'volume', f:0.24 }, cups:{ d:'volume', f:0.24 }
+};
+
+function convert(q){
+  const m = q.match(/([\d.]+)\s*([a-z]+)\s+(?:to|in|into)\s+([a-z]+)\s*$/i);
+  if(!m) return null;
+  const n = parseFloat(m[1]);
+  const a = m[2].toLowerCase(), b = m[3].toLowerCase();
+  if((a === 'c' || a === 'celsius') && (b === 'f' || b === 'fahrenheit'))
+    return n + '°C is ' + (+(n * 9 / 5 + 32).toFixed(2)) + '°F';
+  if((a === 'f' || a === 'fahrenheit') && (b === 'c' || b === 'celsius'))
+    return n + '°F is ' + (+((n - 32) * 5 / 9).toFixed(2)) + '°C';
+  const ua = UNITS[a], ub = UNITS[b];
+  if(!ua || !ub || ua.d !== ub.d) return null;
+  const v = n * ua.f / ub.f;
+  return n + ' ' + a + ' is ' + (+v.toFixed(6)) + ' ' + b;
+}
+
+const TZ = {
+  london:'Europe/London', paris:'Europe/Paris', berlin:'Europe/Berlin', moscow:'Europe/Moscow',
+  'new york':'America/New_York', 'los angeles':'America/Los_Angeles', chicago:'America/Chicago',
+  toronto:'America/Toronto', 'sao paulo':'America/Sao_Paulo', tokyo:'Asia/Tokyo', beijing:'Asia/Shanghai',
+  shanghai:'Asia/Shanghai', singapore:'Asia/Singapore', dubai:'Asia/Dubai', mumbai:'Asia/Kolkata',
+  delhi:'Asia/Kolkata', kolkata:'Asia/Kolkata', bangalore:'Asia/Kolkata', bengaluru:'Asia/Kolkata',
+  chennai:'Asia/Kolkata', hyderabad:'Asia/Kolkata', sydney:'Australia/Sydney', melbourne:'Australia/Melbourne',
+  auckland:'Pacific/Auckland', cairo:'Africa/Cairo', nairobi:'Africa/Nairobi', istanbul:'Europe/Istanbul',
+  seoul:'Asia/Seoul', bangkok:'Asia/Bangkok', jakarta:'Asia/Jakarta', karachi:'Asia/Karachi', dhaka:'Asia/Dhaka'
+};
+
+/* ==========================================================
+   ACTIONS
+   ========================================================== */
+const timersRunning = { n:0 };
+function startTimer(seconds, label){
+  const id = ++timersRunning.n;
+  log('sys', 'Timer #' + id + ' armed for ' + fmtDuration(seconds) + (label ? ' — ' + label : ''));
+  setTimeout(() => {
+    beep(880, 1.4); buzz([120, 60, 120]);
+    say('Time is up, ' + state.name + '.' + (label ? ' ' + label + '.' : ''));
+    notify('Timer complete', label || 'Your timer has finished.');
+  }, Math.max(1000, seconds * 1000));
+  return id;
+}
+
+let stopwatch = { start:0, running:false };
+function stopwatchCmd(t){
+  if(/\b(start|begin)\b.*\bstopwatch\b|\bstopwatch\b.*\bstart\b/.test(t)){
+    if(!stopwatch.running){ stopwatch.start = Date.now(); stopwatch.running = true; say('Stopwatch running.'); }
+    else say('The stopwatch is already running.');
+  } else if(/\b(stop|pause)\b.*\bstopwatch\b|\bstopwatch\b.*\bstop\b/.test(t)){
+    if(stopwatch.running){
+      const s = (Date.now() - stopwatch.start) / 1000;
+      stopwatch.running = false;
+      say('Stopped at ' + fmtDuration(s) + '.');
+    } else say('The stopwatch is not running.');
+  } else if(/\breset\b.*\bstopwatch\b|\bstopwatch\b.*\breset\b/.test(t)){
+    stopwatch = { start:0, running:false }; say('Stopwatch reset.');
+  } else return false;
+  return true;
+}
+
+function notify(title, body){
+  try {
+    if(!state.notif || !window.Notification || Notification.permission !== 'granted') return;
+    new Notification(title, { body: body, tag: 'jarvis' });
+  } catch(e){}
+}
+
+function exportData(){
+  try {
+    const payload = {
+      exported: new Date().toISOString(),
+      operator: state.name,
+      notes: state.notes,
+      reminders: state.reminders
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'jarvis-memory.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    log('sys', 'Memory exported as jarvis-memory.json');
+  } catch(e){ log('sys', 'Export failed: ' + e.message, 'err'); }
+}
+
+/* ---------------- self test ---------------- */
+async function runSelfTest(){
+  log('sys', 'Running full diagnostic…');
+  const rows = [];
+  const add = (name, state_, note) => rows.push({ name, state: state_, note: note || '' });
+
+  add('Secure context', window.isSecureContext ? 'pass' : 'warn', window.isSecureContext ? 'https / localhost' : 'mic may be blocked');
+  add('Speech synthesis', window.speechSynthesis ? (voices.length ? 'pass' : 'warn') : 'fail', voices.length + ' voices');
+  add('Speech recognition', SR ? 'pass' : 'fail', SR ? 'available' : 'use Chrome/Edge');
+  add('Microphone', navigator.mediaDevices ? 'pass' : 'warn', navigator.mediaDevices ? 'API present' : 'unavailable');
+  add('Local storage', S.set('_t', 1) ? 'pass' : 'fail', '');
+  add('Network', navigator.onLine ? 'pass' : 'fail', navigator.onLine ? 'online' : 'offline');
+  add('Geolocation', navigator.geolocation ? 'pass' : 'warn', '');
+  add('Notifications', window.Notification ? Notification.permission : 'fail', '');
+  add('Battery API', navigator.getBattery ? 'pass' : 'warn', '');
+  add('Wake lock', 'wakeLock' in navigator ? 'pass' : 'warn', '');
+  add('Vibration', 'vibrate' in navigator ? 'pass' : 'warn', '');
+  add('AI brain', state.llmKey ? 'pass' : 'warn', state.llmKey ? (state.llmModel || 'configured') : 'no key — local mode');
+
+  const box = $('selftest');
+  box.innerHTML = rows.map(r =>
+    '<div class="row"><span>' + r.name + '</span><span class="' + r.state + '">' +
+    (r.state === 'pass' ? 'OK' : r.state === 'warn' ? 'PARTIAL' : 'FAIL') + '</span></div>'
+  ).join('');
+
+  const pass = rows.filter(r => r.state === 'pass').length;
+  const warn = rows.filter(r => r.state === 'warn').length;
+  const fail = rows.filter(r => r.state === 'fail').length;
+  $('k-test').textContent = pass + ' ok / ' + warn + ' partial / ' + fail + ' fail';
+  setView('diag');
+  say('Diagnostic complete. ' + pass + ' systems nominal, ' + warn + ' partial, ' + fail + ' failed.');
+}
+
+/* ==========================================================
+   COMMAND HANDLERS
+   ========================================================== */
+let busy = false;
+
+const HANDLERS = [
+  { re:/^(help|what can you do|commands|capabilities|features)\b/, run: async () => {
+      const h = 'I can run timers, alarms, reminders and a stopwatch; report time, world clocks, dates and weather with a four-day forecast and air quality; '
+        + 'do arithmetic, unit and currency conversion; define words and translate; take notes and to-dos; look things up; read headlines; open sites, search and play media; '
+        + 'flip coins and roll dice; change armor marks; run diagnostics and lock the interface. '
+        + 'Set me to always-on and I will answer everything you say without a wake word. '
+        + 'Add an API key in settings and I will hold a full conversation.';
+      say('Here is my inventory. ' + h); } },
+
+  { re:/\b(self.?test|run diagnostics|diagnostics|system check|check systems|run a test)\b/, run: async () => { await runSelfTest(); } },
+
+  { re:/\b(status|system report|how are you|systems? nominal)\b/, run: async () => {
+      say('All primary systems nominal, ' + state.name + '. Battery ' + (el.chipbat.textContent || 'unknown')
+        + ', connection ' + (el.chipnet.textContent || 'unknown') + '. ' + state.notes.length
+        + ' memory entries and ' + state.reminders.length + ' armed reminders.'); } },
+
+  { re:/\b(who are you|what are you|your name|introduce yourself)\b/, run: async () => {
+      say('I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. I run entirely in your browser, ' + state.name
+        + ', handling your commands, your memory and your alerts.'); } },
+
+  { re:/^(hi|hey|hello|yo|good morning|good afternoon|good evening|namaste|namaskar)\b/, run: async () => {
+      const h = new Date().getHours();
+      const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      say(part + ', ' + state.name + '. All systems online. How may I assist?'); } },
+
+  { re:/^(thanks|thank you|thx|cheers)\b/, run: async () => say('Always a pleasure, ' + state.name + '.') },
+
+  { re:/\b(lock|privacy mode|seal the interface)\b/, run: async () => {
+      el.lock.classList.add('open'); say('Interface sealed, ' + state.name + '.'); } },
+
+  { re:/\b(mute|silence|quiet)\b/, run: async () => {
+      state.muted = true; S.set('muted', true); syncButtons();
+      if(window.speechSynthesis) speechSynthesis.cancel();
+      log('jarvis', 'Audio muted, ' + state.name + '. Tap the speaker to restore.'); } },
+
+  { re:/\b(unmute|speak again|audio on)\b/, run: async () => {
+      state.muted = false; S.set('muted', false); syncButtons();
+      say('Audio restored, ' + state.name + '.'); } },
+
+  { re:/\b(always on|always listening|always listen|ambient mode|assistant mode|stay with me|keep listening|listen always|hear everything|answer everything)\b/, run: async () => {
+      setMode('always');
+      say('Always-on listening engaged, ' + state.name + '. Just speak — no wake word required. Say “stop listening” when you are finished.'); } },
+
+  { re:/\b(wake word|wake mode|call me by name)\b/, run: async () => {
+      setMode('wake');
+      say('Wake-word mode, ' + state.name + '. Say “Jarvis” before each request.'); } },
+
+  { re:/\b(continuous|conversation mode|reply after each)\b/, run: async () => {
+      state.cont = !state.cont; S.set('cont', state.cont);
+      say(state.cont ? 'Continuous conversation enabled. I will keep listening after each reply.' : 'Continuous conversation disabled.'); } },
+
+  { re:/\b(stopwatch)\b/, run: async (t) => { if(!stopwatchCmd(t)) say('Say “start stopwatch”, “stop stopwatch” or “reset stopwatch”.'); } },
+
+  { re:/\b(timer|alarm|countdown)\b/, run: async (t) => {
+      const m = t.match(/(\d+)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b/);
+      if(!m){ say('How long should the timer run? For example, “set a timer for five minutes”.'); return; }
+      const n = parseInt(m[1], 10);
+      const unit = m[2][0] === 'h' ? 3600 : (m[2][0] === 'm' ? 60 : 1);
+      let label = '';
+      const lab = t.match(/(?:called|named)\s+(?:the\s+)?([a-z0-9 ]{3,40})$/);
+      if(lab) label = lab[1].replace(/\b(timer|alarm)\b/g, '').trim();
+      const id = startTimer(n * unit, label);
+      say('Timer ' + id + ' set for ' + fmtDuration(n * unit) + '. I shall alert you.'); } },
+
+  { re:/\bremind me\b/, run: async (t) => {
+      const body = t.replace(/^.*?remind me\s*(to|that|about)?\s*/, '');
+      const when = parseWhen(body);
+      if(!when){ say('When should I remind you? Try “remind me to call Amma in 20 minutes” or “at 6 pm”.'); return; }
+      const what = body.replace(/in\s+\d+\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b/,'')
+                       .replace(/\b(?:at|by)\s+\d{1,2}(?::\d{2})?\s*(am|pm)?\b/,'')
+                       .trim().replace(/[.,]$/,'') || 'your reminder';
+      state.reminders.push({ at: when.at, text: what });
+      S.set('reminders', state.reminders); refresh();
+      if(state.notif && window.Notification && Notification.permission === 'default') Notification.requestPermission();
+      say('Noted. I will remind you to ' + what + ' ' + when.phrase + '.'); } },
+
+  { re:/\b(my reminders|list reminders|what.*reminders)\b/, run: async () => {
+      if(!state.reminders.length){ say('No reminders armed, ' + state.name + '.'); return; }
+      const lines = state.reminders.map((r, i) =>
+        (i + 1) + '. ' + r.text + ' — ' + new Date(r.at).toLocaleString([], { hour:'numeric', minute:'2-digit', day:'numeric', month:'short' }));
+      log('jarvis', 'Armed reminders:\n' + lines.join('\n'));
+      speak('You have ' + state.reminders.length + ' reminders. ' + state.reminders.map(r => r.text).join('. ')); } },
+
+  { re:/\b(clear|delete|wipe)\s+(all\s+)?reminders\b/, run: async () => {
+      state.reminders = []; S.set('reminders', state.reminders); refresh(); say('All reminders cleared.'); } },
+
+  { re:/^(clear|delete|wipe)\s+(all\s+)?(notes|memory)\b/, run: async () => {
+      state.notes = []; S.set('notes', state.notes); refresh(); say('Memory cleared, ' + state.name + '.'); } },
+
+  { re:/\b(done|complete|finish)\s+(note\s+|task\s+)?(\d+)\b/, run: async (t) => {
+      const n = parseInt(t.match(/(\d+)\s*$/)[1], 10) - 1;
+      if(!state.notes[n]){ say('There is no item ' + (n + 1) + '.'); return; }
+      state.notes[n].done = !state.notes[n].done;
+      S.set('notes', state.notes); refresh();
+      say(state.notes[n].done ? 'Marked “' + state.notes[n].text + '” complete.' : 'Reopened “' + state.notes[n].text + '”.'); } },
+
+  { re:/\b(delete|remove)\s+(note\s+|task\s+)?(\d+)\b/, run: async (t) => {
+      const n = parseInt(t.match(/(\d+)\s*$/)[1], 10) - 1;
+      if(!state.notes[n]){ say('There is no item ' + (n + 1) + '.'); return; }
+      const gone = state.notes.splice(n, 1)[0];
+      S.set('notes', state.notes); refresh(); say('Deleted “' + gone.text + '”.'); } },
+
+  { re:/\b(my notes|read notes|show notes|what.*(notes|to.?do)|list notes|my tasks|list tasks)\b/, run: async () => {
+      if(!state.notes.length){ say('Your memory is empty, ' + state.name + '. Say “note that …” to add something.'); return; }
+      const list = state.notes.map((n, i) => (i + 1) + '. ' + (n.done ? '[done] ' : '') + n.text).join('\n');
+      log('jarvis', 'You have ' + state.notes.length + ' item' + (state.notes.length > 1 ? 's' : '') + ':\n' + list);
+      speak('You have ' + state.notes.length + ' items. ' + state.notes.map(n => n.text).join('. ')); } },
+
+  { re:/^(note|remember|make a note|take a note|add a task|todo|to-do)\b/, run: async (t) => {
+      const body = t.replace(/^(note|remember|make a note|take a note|add a task|todo|to-do)\s*(that|down|this)?\s*:?\s*/,'').trim();
+      if(!body){ say('What should I note down?'); return; }
+      state.notes.push({ text: body, done:false, at: Date.now() });
+      S.set('notes', state.notes); refresh();
+      say('Noted, ' + state.name + '. ' + body); } },
+
+  { re:/\b(export|download|back up|backup)\b.*\b(memory|notes|data)\b/, run: async () => exportData() },
+
+  { re:/\b(air quality|aqi|pollution|smog)\b/, run: async (t) => {
+      busy = true;
+      const m = t.match(/\bin\s+([a-z\s,.'-]{2,40})$/);
+      try { say(await getAir(m ? m[1].trim() : null)); }
+      catch(e){ say('I could not reach the air quality service, ' + state.name + '.'); }
+      finally { busy = false; } } },
+
+  { re:/\b(forecast|next few days|this week|tomorrow'?s? weather|weekly weather)\b/, run: async (t) => {
+      busy = true;
+      const m = t.match(/\bin\s+([a-z\s,.'-]{2,40})$/);
+      try { say(await getWeather(m ? m[1].trim() : null, 'forecast')); }
+      catch(e){ say('The forecast service is unreachable. Try naming a city.'); }
+      finally { busy = false; } } },
+
+  { re:/\b(weather|temperature|raining|rain today|how hot|how cold|humidity|sunrise|sunset)\b/, run: async (t) => {
+      busy = true;
+      const m = t.match(/\bin\s+([a-z\s,.'-]{2,40})$/);
+      const place = m ? m[1].replace(/\b(today|now|tomorrow|please)\b/g,'').trim() : null;
+      log('sys', 'Querying meteorological service' + (place ? ' for ' + place : ' for your position') + '…');
+      try { say(await getWeather(place, 'full')); }
+      catch(err){
+        say(/denied|permission/i.test(String(err && err.message))
+          ? 'Location access is blocked. Name a city instead — “weather in Mumbai”.'
+          : 'I could not reach the weather service. Try “weather in Delhi”.');
+      } finally { busy = false; } } },
+
+  { re:/\b(time in|what time is it in|local time in)\b/, run: async (t) => {
+      const m = t.match(/\b(?:in|at)\s+([a-z\s]{2,30})$/);
+      if(!m){ say('Which city, ' + state.name + '?'); return; }
+      const city = m[1].trim().toLowerCase();
+      const zone = TZ[city];
+      if(!zone){ say('I do not have a clock for ' + m[1].trim() + '.'); return; }
+      const s = new Date().toLocaleString(undefined, { timeZone: zone, hour:'numeric', minute:'2-digit', weekday:'long' });
+      say('It is ' + s + ' in ' + m[1].trim().replace(/\b\w/g, c => c.toUpperCase()) + '.'); } },
+
+  { re:/\b(what.*time|the time|time is it|clock)\b/, run: async () => {
+      say('It is ' + new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) + ', ' + state.name + '.'); } },
+
+  { re:/\b(what.*(date|day)|today'?s date|which day|the date|what day)\b/, run: async () => {
+      say('Today is ' + new Date().toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long', year:'numeric' }) + '.'); } },
+
+  { re:/\b(battery|charge level|power level)\b/, run: async () => {
+      try {
+        if(!navigator.getBattery){ say('This browser does not expose battery data, ' + state.name + '.'); return; }
+        const b = await navigator.getBattery();
+        say('Battery at ' + Math.round(b.level * 100) + ' percent' + (b.charging ? ', currently charging.' : '.'));
+      } catch(e){ say('Battery information is unavailable.'); } } },
+
+  { re:/\bconvert\b|\bhow many\b(?=[\s\S]*\d)|\d\s*[a-z]{3}\s+(?:to|in|into)\s+[a-z]{3}\b/, run: async (t) => {
+      const c = convert(t);
+      if(c){ say(c); return; }
+      const fx = t.match(/([\d.]+)\s*([a-z]{3})\s*(?:to|in|into)\s*([a-z]{3})/i);
+      if(fx){
+        busy = true;
+        try {
+          const rates = await getRates();
+          const a = fx[2].toUpperCase(), b = fx[3].toUpperCase();
+          if(!rates[a] || !rates[b]){ say('I do not recognise one of those currencies.'); return; }
+          const usd = parseFloat(fx[1]) / rates[a];
+          const out = usd * rates[b];
+          say(fx[1] + ' ' + a + ' is about ' + out.toFixed(2) + ' ' + b + '.');
+        } catch(e){ say('The exchange rate service is unreachable.'); }
+        finally { busy = false; }
+        return;
+      }
+      say('Try “convert 10 kilometres to miles” or “100 usd to inr”.'); } },
+
+  { re:/\b(define|meaning of|what does .* mean)\b/, run: async (t) => {
+      const w = t.replace(/^.*?(define|meaning of|what does)\s*/,'').replace(/\s*mean\??$/,'').trim();
+      if(!w){ say('Which word?'); return; }
+      busy = true;
+      try {
+        const d = await define(w);
+        if(d) say(d.word + (d.pos ? ' (' + d.pos + ')' : '') + ': ' + d.def);
+        else say('I could not find a definition for “' + w + '”.');
+      } catch(e){ say('The dictionary is unreachable.'); }
+      finally { busy = false; } } },
+
+  { re:/\btranslate\b/, run: async (t) => {
+      const LANGS = { hindi:'hi', tamil:'ta', telugu:'te', bengali:'bn', marathi:'mr', gujarati:'gu',
+        kannada:'kn', malayalam:'ml', punjabi:'pa', urdu:'ur', spanish:'es', french:'fr', german:'de',
+        japanese:'ja', chinese:'zh', arabic:'ar', russian:'ru', portuguese:'pt', italian:'it', korean:'ko' };
+      const m = t.match(/translate\s+(.+?)\s+(?:to|into|in)\s+([a-z]+)/);
+      if(!m){ say('Say “translate good morning to Hindi”.'); return; }
+      const code = LANGS[m[2]] || m[2].slice(0, 2);
+      busy = true;
+      try {
+        const out = await translate(m[1], code);
+        say(out ? '“' + m[1] + '” in ' + m[2] + ' is: ' + out : 'Translation failed, ' + state.name + '.');
+      } catch(e){ say('The translation service is unreachable.'); }
+      finally { busy = false; } } },
+
+  { re:/\b(news|headlines|what'?s happening|tech news)\b/, run: async () => {
+      busy = true; log('sys', 'Pulling top headlines…');
+      try {
+        const items = await news(5);
+        log('jarvis', 'Top headlines:\n' + items.join('\n'));
+        speak('Here are the top headlines. ' + items.map(i => i.replace(/^\d+\.\s*/,'')).slice(0, 3).join('. '));
+      } catch(e){ say('The news feed is unreachable.'); }
+      finally { busy = false; } } },
+
+  { re:/\b(flip a coin|toss a coin|heads or tails)\b/, run: async () => {
+      say(Math.random() < 0.5 ? 'Heads.' : 'Tails.'); } },
+
+  { re:/\b(roll (a )?dice|roll a die|roll the dice)\b/, run: async () => {
+      say('You rolled a ' + (1 + Math.floor(Math.random() * 6)) + '.'); } },
+
+  { re:/\b(random number|pick a number)\b/, run: async (t) => {
+      const m = t.match(/(\d+)\s*(?:to|and)\s*(\d+)/);
+      const lo = m ? parseInt(m[1], 10) : 1, hi = m ? parseInt(m[2], 10) : 100;
+      say('I pick ' + (lo + Math.floor(Math.random() * (hi - lo + 1))) + '.'); } },
+
+  { re:/\b(mark (iii|3|42)|switch.*(theme|armor|suit)|change.*(theme|armor|suit)|armor mark)\b/, run: async (t) => {
+      let id = 'mark3';
+      if(/42/.test(t)) id = 'mark42';
+      else if(/stealth/.test(t)) id = 'stealth';
+      else if(/war/.test(t)) id = 'war';
+      else if(/classic|cyan/.test(t)) id = 'cyan';
+      setTheme(id);
+      const label = (THEMES.find(x => x.id === id) || {}).label || id;
+      say('Switching to ' + label + ', ' + state.name + '.'); } },
+
+  { re:/\b(joke|make me laugh|something funny)\b/, run: async () => {
+      const J = [
+        'I would tell you a joke about UDP, but you might not get it.',
+        'I ran a diagnostic on my sense of humour. It returned a single result: adequate.',
+        'There are two hard problems in computing: cache invalidation, naming things, and off-by-one errors.',
+        'I have calculated the odds of you finishing that task today. I shall keep the number to myself.',
+        'Mr. Stark once asked me to be more fun at parties. I lowered my formality by twelve percent. It did not help.'
+      ];
+      say(J[Math.floor(Math.random() * J.length)]); } },
+
+  { re:/^(sleep|go to sleep|stand down|goodbye|bye|shut down|shutdown|stop listening)\b/, run: async () => {
+      setMode('off');
+      say('Powering down the interface, ' + state.name + '. Call my name when you need me.'); } }
+];
+
+/* ---------------- dispatcher ---------------- */
+async function handleInput(raw, fromMode){
+  let text = (raw || '').trim();
+  if(!text) return;
+
+  const hadWake = WAKE_RE.test(text);
+  const stripped = text.replace(/^\s*(hey|ok|okay|yo)?\s*j[ae]r\w{0,4}s[,:\s]*/i, '').trim();
+
+  if(fromMode === 'wake' && !hadWake) return;
+
+  /* always-on: answer anything intelligible, ignore noise and repeats */
+  if(fromMode === 'always'){
+    if(!isWorthAnswering(text)) return;
+    const now = Date.now(), key = text.toLowerCase();
+    if(key === lastUtter.text && now - lastUtter.at < 2500) return;
+    lastUtter = { text: key, at: now };
+  }
+
+  if(fromMode === 'wake' && !stripped){
+    log('user', text);
+    const g = ['Yes, ' + state.name + '?', 'At your service.', 'Listening.', 'Go ahead, ' + state.name + '.'];
+    say(g[Math.floor(Math.random() * g.length)]);
+    return;
+  }
+  text = stripped || text;
+  if(!text) return;
+
+  log('user', text);
+  el.field.value = '';
+  buzz(8);
+
+  const t = text.toLowerCase().replace(/\s+/g, ' ').trim();
+  if(busy){ log('sys', 'Still working on the previous request…'); return; }
+
+  /* fast local paths first */
+  const math = tryMath(t);
+  if(math){ say(math); return; }
+
+  const openM = t.match(/^(?:open|launch|go to|take me to)\s+([a-z0-9 .]+)$/);
+  if(openM){
+    const key = openM[1].trim().replace(/\s+/g, '');
+    const url = SITES[key];
+    if(url){
+      window.open(url, '_blank', 'noopener');
+      say('Opening ' + key.replace(/\b\w/g, c => c.toUpperCase()) + ', ' + state.name + '.'); return;
+    }
+  }
+  const playM = t.match(/^play\s+(.+?)(\s+on youtube)?$/);
+  if(playM){
+    const q = playM[1].replace(/\s+on youtube$/, '').trim();
+    window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank', 'noopener');
+    say('Queuing “' + q + '” on YouTube.'); return;
+  }
+  const searchM = t.match(/^(?:search(?: for)?|google|look up|find)\s+(.+)$/);
+  if(searchM){
+    const q = searchM[1].trim();
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank', 'noopener');
+    say('Searching the web for “' + q + '”.'); return;
+  }
+
+  /* ordered handlers */
+  for(const h of HANDLERS){
+    if(h.re.test(t)){ await h.run(t); return; }
+  }
+
+  /* wikipedia */
+  const wikiM = t.match(/^(?:who (?:is|are|was|were)|what (?:is|are|was|were)|tell me about)\s+(.{2,80})$/);
+  if(wikiM){
+    busy = true;
+    const q = wikiM[1].replace(/[?.]$/,'').trim();
+    log('sys', 'Consulting the archives — “' + q + '”');
+    try {
+      const w = await wikipedia(q);
+      if(w){
+        const clean = w.extract.replace(/\s+/g,' ').trim();
+        log('jarvis', w.title.toUpperCase() + '\n' + clean);
+        speak(clean.length > 420 ? clean.slice(0, 420) + '…' : clean);
+      } else {
+        await brainOrApology(text);
+      }
+    } catch(e){
+        await brainOrApology(text);
+    } finally { busy = false; }
+    return;
+  }
+        await brainOrApology(text);
+}
+
+async function brainOrApology(text){
+  if(brainReady()){
+    busy = true;
+    const line = log('jarvis', '…');
+    let out = '';
+    try {
+      out = await askBrain(text, partial => {
+        line.textContent = partial;
+        el.logbody.scrollTop = el.logbody.scrollHeight;
+      });
+    } catch(err){
+      log('sys', String(err.message || err), 'err');
+      out = '';
+    }
+    busy = false;
+    if(out){
+      line.textContent = out;
+      speak(out);
+    } else {
+      const msg = 'I could not reach the model, ' + state.name + '. Check the provider, key and model in settings.';
+      line.textContent = msg; speak(msg);
+    }
+    return;
+  }
+  say('That is outside my local protocols, ' + state.name + '. I handle timers, reminders, time, world clocks, weather, '
+    + 'air quality, maths, unit and currency conversion, dictionary, translation, notes, headlines, lookups and web actions. '
+    + 'For real conversation, add an AI key under settings — Groq and Google Gemini both have free tiers.');
+}
+
+const SITES = {
+  youtube:'https://www.youtube.com', google:'https://www.google.com', gmail:'https://mail.google.com',
+  github:'https://github.com', maps:'https://maps.google.com', wikipedia:'https://en.wikipedia.org',
+  twitter:'https://twitter.com', x:'https://x.com', reddit:'https://www.reddit.com', netflix:'https://www.netflix.com',
+  spotify:'https://open.spotify.com', whatsapp:'https://web.whatsapp.com', linkedin:'https://www.linkedin.com',
+  instagram:'https://www.instagram.com', stackoverflow:'https://stackoverflow.com', calendar:'https://calendar.google.com',
+  drive:'https://drive.google.com', news:'https://news.google.com', chatgpt:'https://chat.openai.com'
+};
+
+/* ==========================================================
+   UI
+   ========================================================== */
+const CHIPS = ['Always on','Weather','Forecast','Timer 5 min','My notes','News','Diagnostics','Air quality','Joke','Help'];
+function buildChips(){
+  el.chips.innerHTML = '';
+  CHIPS.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = c;
+    b.addEventListener('click', () => { buzz(8); handleInput(c); });
+    el.chips.appendChild(b);
+  });
+}
+
+function setView(name){
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === name));
+  el.tabs.forEach(b => b.classList.toggle('active', b.dataset.view === name));
+}
+el.tabs.forEach(b => b.addEventListener('click', () => { buzz(8); setView(b.dataset.view); }));
+
+function setTheme(id){
+  state.theme = id; S.set('theme', id);
+  document.body.dataset.theme = id;
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  $('k-theme').textContent = t.label;
+  document.querySelectorAll('.sw').forEach(s => s.classList.toggle('sel', s.dataset.id === id));
+  const meta = document.querySelector('meta[name=theme-color]');
+  if(meta) meta.setAttribute('content', '#03070d');
+}
+
+function buildThemeRow(){
+  const row = $('themerow'); row.innerHTML = '';
+  THEMES.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'sw' + (t.id === state.theme ? ' sel' : '');
+    b.dataset.id = t.id;
+    b.style.background = 'radial-gradient(circle at 50% 40%, #fff, ' + t.c + ' 55%, #04121b 100%)';
+    b.title = t.label;
+    b.addEventListener('click', () => setTheme(t.id));
+    row.appendChild(b);
+  });
+}
+
+const LANGS = [
+  ['en-IN','English (India)'], ['en-US','English (US)'], ['en-GB','English (UK)'],
+  ['hi-IN','हिन्दी — Hindi'], ['bn-IN','বাংলা — Bengali'], ['ta-IN','தமிழ் — Tamil'],
+  ['te-IN','తెలుగు — Telugu'], ['mr-IN','मराठी — Marathi'], ['gu-IN','ગુજરાતી — Gujarati'],
+  ['kn-IN','ಕನ್ನಡ — Kannada'], ['ml-IN','മലയാളം — Malayalam'], ['pa-IN','ਪੰਜਾਬੀ — Punjabi'],
+  ['es-ES','Español'], ['fr-FR','Français'], ['de-DE','Deutsch']
+];
+function buildLangSelect(){
+  const sel = $('s-lang'); sel.innerHTML = '';
+  LANGS.forEach(([v, l]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o);
+  });
+  sel.value = state.lang;
+}
+
+function syncButtons(){
+  el.btnmute.textContent = state.muted ? '🔇' : '🔊';
+  el.btnmute.classList.toggle('active', state.muted);
+  updateModeUI();
+  el.chipbrain.textContent = brainReady() ? 'AI' : 'LOCAL';
+}
+
+function refresh(){
+  $('k-name').textContent = state.name;
+  $('k-notes').textContent = state.notes.length;
+  $('k-rem').textContent = state.reminders.length;
+  $('k-theme').textContent = (THEMES.find(t => t.id === state.theme) || THEMES[0]).label;
+  syncButtons();
+}
+
+/* ---------------- input wiring ---------------- */
+el.sendbtn.addEventListener('click', () => { const v = el.field.value.trim(); if(v) handleInput(v); el.field.focus(); });
+el.field.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); el.sendbtn.click(); } });
+el.micbtn.addEventListener('click', toggleMic);
+el.corebtn.addEventListener('click', toggleMic);
+$('unlock').addEventListener('click', () => { el.lock.classList.remove('open'); say('Interface restored.'); });
+
+document.addEventListener('keydown', e => {
+  if(e.code === 'Space' && document.activeElement !== el.field && !el.settings.classList.contains('open')){
+    e.preventDefault(); toggleMic();
+  }
+  if(e.key === 'Escape') el.settings.classList.remove('open');
+});
+
+el.btnmute.addEventListener('click', () => {
+  state.muted = !state.muted; S.set('muted', state.muted);
+  syncButtons();
+  if(state.muted && window.speechSynthesis) speechSynthesis.cancel();
+  else say('Audio restored, ' + state.name + '.');
+});
+
+/* ---------- listening modes: off / wake word / always on ---------- */
+function updateModeUI(){
+  el.btnwake.classList.toggle('active', mode !== 'off');
+  el.btnwake.classList.toggle('always', mode === 'always');
+  el.btnwake.textContent = mode === 'always' ? '●' : mode === 'wake' ? '◎' : '◉';
+  el.btnwake.title = mode === 'always' ? 'Always listening — tap to change'
+    : mode === 'wake' ? 'Wake word — tap to change' : 'Tap to change listening mode';
+  document.body.classList.toggle('always', mode === 'always');
+  el.reactor.classList.toggle('ambient', mode === 'always');
+  if(!listening) setCaption(idleCaption());
+}
+
+function setMode(m){
+  if(m !== 'off' && !SR){
+    setCaption('Listening modes need Chrome, Edge or Safari.');
+    log('sys','Always-on and wake-word modes need the Web Speech API — Chrome, Edge or Safari.', 'err');
+    return;
+  }
+  mode = m; state.mode = m; state.wake = (m !== 'off'); S.set('mode', m); S.set('wake', state.wake);
+  buzz(m === 'off' ? 8 : 16);
+  if(m === 'off'){
+    wantListening = false;
+    if(recog && listening) recog.stop();
+  } else {
+    if(!recog) recog = buildRecognizer();
+    safeStart();
+  }
+  updateModeUI();
+}
+
+function cycleMode(){
+  const order = ['off','wake','always'];
+  const next = order[(order.indexOf(mode) + 1) % order.length];
+  setMode(next);
+  if(next === 'wake') say('Wake-word mode. Call me by name, ' + state.name + '.');
+  else if(next === 'always') say('Always on, ' + state.name + '. I am listening continuously — speak whenever you like, no wake word needed. Say “stop listening” to end it.');
+  else say('Listening off, ' + state.name + '.');
+}
+el.btnwake.addEventListener('click', cycleMode);
+
+/* ---------------- settings ---------------- */
+el.btnset.addEventListener('click', openSettings);
+function buildProviderSelect(){
+  const sel = $('s-provider'); if(!sel) return;
+  sel.innerHTML = '';
+  Object.keys(PROVIDERS).forEach(k => {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = PROVIDERS[k].label;
+    sel.appendChild(o);
+  });
+  sel.value = state.provider || 'custom';
+}
+function updateKeyLink(){
+  const box = $('s-keylink'); if(!box) return;
+  const pr = PROVIDERS[$('s-provider').value] || {};
+  box.innerHTML = pr.keys
+    ? ' — <a href="' + pr.keys + '" target="_blank" rel="noopener" style="color:var(--accent);text-transform:none">get a key</a>'
+    : '';
+}
+function applyProvider(id){
+  const pr = PROVIDERS[id] || {};
+  if(pr.base) $('s-base').value = pr.base;
+  if(pr.model) $('s-model').value = pr.model;
+  updateKeyLink();
+}
+
+function openSettings(){
+  $('s-name').value = state.name;
+  $('s-rate').value = state.rate;
+  $('s-pitch').value = state.pitch;
+  $('s-muted').checked = state.muted;
+  $('s-mode').value = mode;
+  $('s-cont').checked = state.cont;
+  $('s-notif').checked = state.notif;
+  $('s-haptic').checked = state.haptic;
+  buildProviderSelect();
+  $('s-base').value = state.llmBase;
+  $('s-model').value = state.llmModel;
+  $('s-key').value = state.llmKey;
+  $('s-tts').value = state.ttsEngine;
+  $('s-ttsvoice').value = state.ttsVoice;
+  $('s-ttsmodel').value = state.ttsModel;
+  updateKeyLink();
+  loadVoices(); buildLangSelect(); buildThemeRow();
+  el.settings.classList.add('open');
+}
+
+$('s-provider').addEventListener('change', e => applyProvider(e.target.value));
+
+el.settings.addEventListener('click', e => { if(e.target === el.settings) el.settings.classList.remove('open'); });
+
+function applyForm(){
+  state.name = $('s-name').value.trim() || 'sir';
+  state.rate = parseFloat($('s-rate').value) || 1;
+  state.pitch = parseFloat($('s-pitch').value) || 0.92;
+  state.muted = $('s-muted').checked;
+  state.cont = $('s-cont').checked;
+  state.haptic = $('s-haptic').checked;
+  state.voice = $('s-voice').value;
+  state.lang = $('s-lang').value;
+  state.provider = $('s-provider').value;
+  state.llmBase = $('s-base').value.trim();
+  state.llmModel = $('s-model').value.trim();
+  state.llmKey = $('s-key').value.trim();
+  state.ttsEngine = $('s-tts').value;
+  state.ttsVoice = $('s-ttsvoice').value;
+  state.ttsModel = $('s-ttsmodel').value.trim() || 'tts-1';
+  ['name','rate','pitch','muted','cont','haptic','voice','lang','provider','llmBase','llmModel','llmKey','ttsEngine','ttsVoice','ttsModel']
+    .forEach(k => S.set(k, state[k]));
+  el.chipbrain.textContent = brainReady() ? 'AI' : 'LOCAL';
+}
+
+$('s-save').addEventListener('click', () => {
+  applyForm();
+
+  const wantNotif = $('s-notif').checked;
+  if(wantNotif && window.Notification && Notification.permission === 'default'){
+    Notification.requestPermission().then(p => {
+      state.notif = (p === 'granted'); S.set('notif', state.notif); refresh();
+    });
+  } else {
+    state.notif = wantNotif && window.Notification && Notification.permission === 'granted';
+    S.set('notif', state.notif);
+  }
+
+  const wantMode = $('s-mode').value;
+  if(wantMode !== mode) setMode(wantMode);
+
+  if(state.muted && window.speechSynthesis) speechSynthesis.cancel();
+  refresh();
+  el.settings.classList.remove('open');
+  say('Configuration saved, ' + state.name + '.');
+});
+
+$('s-testvoice').addEventListener('click', () => {
+  applyForm(); refresh();
+  say('All systems online, ' + state.name + '. This is my voice. Is it satisfactory?');
+});
+
+$('s-testbrain').addEventListener('click', async () => {
+  applyForm(); refresh();
+  const line = log('jarvis', 'Testing the AI brain…');
+  try {
+    const out = await askBrain('Reply with one short sentence confirming you are online.', p => {
+      line.textContent = 'Testing the AI brain…\n' + p;
+    });
+    if(out){
+      line.textContent = 'BRAIN ONLINE — ' + out;
+      speak(out);
+    } else {
+      line.textContent = 'BRAIN RETURNED NOTHING — check the model name for this provider.';
+    }
+  } catch(e){
+    line.textContent = 'BRAIN FAILED — ' + (e.message || e);
+  }
+});
+
+$('s-export').addEventListener('click', exportData);
+
+$('s-clear').addEventListener('click', () => {
+  if(!confirm('Erase all notes, reminders and settings stored in this browser?')) return;
+  ['name','voice','lang','rate','pitch','muted','wake','cont','notif','haptic','theme','llmBase','llmModel','llmKey','notes','reminders']
+    .forEach(k => { try { localStorage.removeItem('jarvis.' + k); } catch(e){} });
+  state.notes = []; state.reminders = [];
+  refresh(); el.settings.classList.remove('open');
+  log('sys', 'Memory wiped. Reload to start fresh.');
+});
+
+/* ==========================================================
+   TELEMETRY (real where the browser allows it)
+   ========================================================== */
+let netLatency = null;
+function paintLoad(){
+  const base = 18 + Math.sin(Date.now() / 2600) * 9 + Math.random() * 7;
+  const v = Math.max(5, Math.min(95, base));
+  $('b-load').style.width = v + '%';
+  $('v-load').textContent = Math.round(v) + '%';
+}
+
+async function paintBattery(){
+  try {
+    if(!navigator.getBattery){ el.chipbat.textContent = '—'; return; }
+    const b = await navigator.getBattery();
+    const pct = Math.round(b.level * 100);
+    el.chipbat.textContent = pct + '%';
+    $('v-bat').textContent = pct + '%' + (b.charging ? ' ⚡' : '');
+    $('b-bat').style.width = pct + '%';
+  } catch(e){}
+}
+
+async function paintStorage(){
+  try {
+    if(!navigator.storage || !navigator.storage.estimate) return;
+    const est = await navigator.storage.estimate();
+    const used = est.usage || 0, quota = est.quota || 1;
+    const pct = Math.min(100, (used / quota) * 100);
+    $('v-store').textContent = (used / 1048576).toFixed(1) + ' MB';
+    $('b-store').style.width = Math.max(1, pct) + '%';
+  } catch(e){}
+}
+
+async function paintNetwork(){
+  const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if(c && c.effectiveType){
+    $('k-conn').textContent = c.effectiveType.toUpperCase() + (c.downlink ? ' · ' + c.downlink + 'Mb/s' : '');
+    el.chipnet.textContent = navigator.onLine ? c.effectiveType.toUpperCase() : 'OFFLINE';
+  } else {
+    el.chipnet.textContent = navigator.onLine ? 'ONLINE' : 'OFFLINE';
+    $('k-conn').textContent = navigator.onLine ? 'online' : 'offline';
+  }
+  if(c && c.rtt){
+    netLatency = c.rtt;
+    $('v-net').textContent = c.rtt + ' ms';
+    $('b-net').style.width = Math.min(100, c.rtt / 5) + '%';
+  }
+}
+
+function paintDevice(){
+  const ua = navigator.userAgent;
+  const mob = /Mobi|Android|iPhone|iPad/i.test(ua);
+  let dev = mob ? 'Mobile' : 'Desktop';
+  if(/iPhone/i.test(ua)) dev = 'iPhone';
+  else if(/iPad/i.test(ua)) dev = 'iPad';
+  else if(/Android/i.test(ua)) dev = 'Android';
+  $('k-dev').textContent = dev;
+  $('k-cores').textContent = navigator.hardwareConcurrency || '—';
+  $('k-sec').textContent = window.isSecureContext ? 'YES' : 'NO';
+}
+
+function tickClock(){
+  el.chiptime.textContent = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const started = Number(sessionStorage.getItem('jarvis.start') || Date.now());
+  sessionStorage.setItem('jarvis.start', String(started));
+  const secs = Math.floor((Date.now() - started) / 1000);
+  const up = $('uptime');
+  if(up) up.textContent = String(Math.floor(secs / 3600)).padStart(2,'0') + ':'
+    + String(Math.floor((secs % 3600) / 60)).padStart(2,'0') + ':' + String(secs % 60).padStart(2,'0');
+}
+
+function checkReminders(){
+  if(!state.reminders.length) return;
+  const now = Date.now();
+  const due = state.reminders.filter(r => r.at <= now);
+  if(!due.length) return;
+  state.reminders = state.reminders.filter(r => r.at > now);
+  S.set('reminders', state.reminders); refresh();
+  due.forEach(r => {
+    beep(720, 0.9); buzz([100, 50, 100]);
+    say('Reminder, ' + state.name + ': ' + r.text);
+    notify('J.A.R.V.I.S. reminder', r.text);
+  });
+}
+
+/* ==========================================================
+   PWA EXTRAS
+   ========================================================== */
+function buildManifest(){
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 512;
+    const g = c.getContext('2d');
+    g.fillStyle = '#03070d'; g.fillRect(0, 0, 512, 512);
+    const grd = g.createRadialGradient(256, 256, 18, 256, 256, 250);
+    grd.addColorStop(0, '#eafcff'); grd.addColorStop(.35, '#57d8ff'); grd.addColorStop(1, '#04202b');
+    g.beginPath(); g.arc(256, 256, 175, 0, Math.PI * 2); g.fillStyle = grd; g.fill();
+    g.strokeStyle = 'rgba(58,215,255,.9)'; g.lineWidth = 12;
+    g.beginPath(); g.arc(256, 256, 222, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 4; g.strokeStyle = 'rgba(58,215,255,.45)';
+    g.beginPath(); g.arc(256, 256, 205, 0, Math.PI * 2); g.stroke();
+
+    const icon = c.toDataURL('image/png');
+    const manifest = {
+      name: 'J.A.R.V.I.S.', short_name: 'JARVIS', description: 'Personal AI assistant',
+      start_url: '.', scope: '.', display: 'standalone', orientation: 'portrait',
+      background_color: '#03070d', theme_color: '#03070d',
+      icons: [{ src: icon, sizes: '192x192', type: 'image/png' }, { src: icon, sizes: '512x512', type: 'image/png' }]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    const link = document.createElement('link');
+    link.rel = 'manifest'; link.href = URL.createObjectURL(blob);
+    document.head.appendChild(link);
+
+    const apple = document.createElement('link');
+    apple.rel = 'apple-touch-icon'; apple.href = icon;
+    document.head.appendChild(apple);
+  } catch(e){}
+}
+
+/* ==========================================================
+   BOOT
+   ========================================================== */
+function runBoot(){
+  const lines = [
+    '> initialising core kernel ............ OK',
+    '> mounting memory banks ............... OK',
+    '> calibrating neural lattice .......... OK',
+    '> arc reactor handshake ............... STABLE',
+    '> loading command modules ............. 42 / 42',
+    '> speech synthesis .................... ' + (window.speechSynthesis ? 'READY' : 'UNAVAILABLE'),
+    '> speech recognition .................. ' + (SR ? 'READY' : 'TYPE ONLY'),
+    '> security protocol ................... AES-256',
+    '> all systems nominal',
+    '> welcome back, ' + state.name.toUpperCase()
+  ];
+  const box = el.bootlog;
+  lines.forEach((l, i) => setTimeout(() => {
+    const d = document.createElement('div'); d.textContent = l;
+    box.appendChild(d); box.scrollTop = box.scrollHeight;
+  }, 165 * i));
+
+  setTimeout(() => {
+    el.boot.classList.add('gone');
+    el.app.classList.add('on');
+    setTimeout(() => { if(el.boot.parentNode) el.boot.remove(); }, 700);
+    greet();
+  }, 165 * lines.length + 480);
+}
+
+function greet(){
+  const h = new Date().getHours();
+  const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  say(part + ', ' + state.name + '. All systems are online.');
+  setCaption(idleCaption());
+  setTimeout(() => log('sys', 'Type “help” for the command list, or tap the core to speak.'), 1200);
+}
+
+/* ---------------- start ---------------- */
+document.body.dataset.theme = state.theme;
+buildChips();
+refresh();
+syncButtons();
+setTheme(state.theme);
+buildLangSelect();
+buildProviderSelect();
+buildManifest();
+paintDevice();
+paintBattery();
+paintStorage();
+paintNetwork();
+paintLoad();
+tickClock();
+recog = buildRecognizer();
+
+setInterval(paintLoad, 2400);
+setInterval(paintBattery, 20000);
+setInterval(paintStorage, 30000);
+setInterval(paintNetwork, 15000);
+setInterval(tickClock, 1000);
+setInterval(checkReminders, 4000);
+
+/* watchdog: if a listening mode is on but the engine has died, bring it back */
+setInterval(() => {
+  if(mode !== 'off' && !listening && !starting && !speaking && !micFatal) safeStart();
+}, 2500);
+
+window.addEventListener('online', () => { paintNetwork(); log('sys', 'Network restored.'); });
+window.addEventListener('offline', () => { paintNetwork(); log('sys', 'Network lost — local commands still work.', 'err'); });
+
+if(mode !== 'off'){
+  const arm = () => {
+    document.removeEventListener('pointerdown', arm);
+    document.removeEventListener('keydown', arm);
+    if(mode !== 'off' && !listening && SR){
+      if(!recog) recog = buildRecognizer();
+      safeStart();
+      updateModeUI();
+    }
+  };
+  document.addEventListener('pointerdown', arm);
+  document.addEventListener('keydown', arm);
+}
+
+if(location.protocol === 'file:'){
+  setTimeout(() => log('sys', 'Opened as a local file. Browsers block the microphone on file:// URLs — voice will not work until you serve this over http://localhost or https. Typing and the AI brain work now.', 'err'), 2600);
+}
+if(!brainReady()){
+  setTimeout(() => log('sys', 'No AI brain configured yet. Tap the gear → AI BRAIN to add a key (Groq and Gemini are free), or I will keep running local commands.'), 4200);
+}
+
+runBoot();
+</script>
+</body>
+</html>
